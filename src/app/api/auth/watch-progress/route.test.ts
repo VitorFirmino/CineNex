@@ -161,6 +161,27 @@ describe("auth/watch-progress route", () => {
     });
   });
 
+  it("should ignore aborted body reads on post", async () => {
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "user-1",
+        },
+      },
+    });
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST({
+      json: vi.fn().mockRejectedValue(
+        Object.assign(new Error("aborted"), { code: "ECONNRESET" }),
+      ),
+    } as unknown as Request);
+
+    expect(response.status).toBe(204);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
   it("should normalize and save valid payloads on post", async () => {
     getUserMock.mockResolvedValue({
       data: {
