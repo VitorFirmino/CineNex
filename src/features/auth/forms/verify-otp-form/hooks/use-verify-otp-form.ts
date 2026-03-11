@@ -144,8 +144,7 @@ export function useVerifyOtpForm() {
         token: data.token.trim(),
       });
       window.dispatchEvent(new Event("auth:changed"));
-      router.push("/");
-      router.refresh();
+      window.location.replace("/");
     } catch (error: unknown) {
       if (!isAxiosError(error)) {
         setError("Não foi possível validar o código agora.");
