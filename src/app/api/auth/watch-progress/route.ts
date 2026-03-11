@@ -8,6 +8,26 @@ import { ensureProfileForUser } from "@services/auth/profile-sync";
 import { NextResponse } from "next/server";
 import { createClient } from "@infrastructure/supabase/server";
 
+function isAbortedBodyReadError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  if (!(error instanceof Error)) {
+    const maybeError = error as { code?: unknown; message?: unknown; name?: unknown } | null;
+    return (
+      maybeError?.name === "AbortError" ||
+      maybeError?.code === "ECONNRESET" ||
+      (typeof maybeError?.message === "string" &&
+        maybeError.message.toLowerCase().includes("aborted"))
+    );
+  }
+
+  const maybeError = error as Error & { code?: unknown };
+  return (
+    error.name === "AbortError" ||
+    maybeError.code === "ECONNRESET" ||
+    error.message.toLowerCase().includes("aborted")
+  );
+}
+
 function normalizeContentType(value: string | null): WatchContentType | null {
   if (!value) return null;
   const normalized = value.trim().toLowerCase();
@@ -81,9 +101,21 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.json().catch((error: unknown) => {
+    if (isAbortedBodyReadError(error)) {
+      return null;
+    }
+
     console.error("[auth/watch-progress] Falha ao interpretar corpo da requisicao.", error);
     return {};
   });
+
+  if (payload === null) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+
   const contentType = normalizeContentType(
     normalizeString(payload?.contentType),
   );
