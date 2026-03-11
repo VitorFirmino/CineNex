@@ -185,6 +185,41 @@ describe("auth/heartbeat route", () => {
     });
   });
 
+  it("should ignore empty request bodies without logging an error", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "user-1",
+        },
+      },
+    });
+    findUniqueMock.mockResolvedValue({
+      id: "user-1",
+      currentContent: "Movie 1",
+      lastActive: new Date(Date.now() - 200_000),
+    });
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/auth/heartbeat", {
+        method: "POST",
+        body: "",
+      }),
+    );
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(updateMock).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: expect.objectContaining({
+        currentContent: null,
+      }),
+    });
+    await expect(response.json()).resolves.toEqual({
+      active: true,
+      updated: true,
+    });
+  });
+
   it("should return a server error when the heartbeat persistence fails", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     getUserMock.mockResolvedValue({
