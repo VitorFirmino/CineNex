@@ -63,9 +63,9 @@ export function useLoginForm() {
         email: data.email.trim().toLowerCase(),
         password: data.password,
       });
+      await authApi.me().catch(() => null);
       window.dispatchEvent(new Event("auth:changed"));
-      router.push(nextPath);
-      router.refresh();
+      window.location.replace(nextPath);
     } catch (error: unknown) {
       if (!isAxiosError(error)) {
         setError("Não foi possível entrar agora. Tente novamente.");
