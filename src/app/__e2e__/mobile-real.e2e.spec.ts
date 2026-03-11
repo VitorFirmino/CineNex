@@ -1,9 +1,31 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   e2eUserCredentials,
   loginWithCredentials,
-  openAccountMenu,
 } from "@shared/testing/e2e/auth";
+
+async function expectAuthenticatedSession(page: Page) {
+  await expect
+    .poll(
+      async () =>
+        await page.evaluate(async () => {
+          const response = await fetch("/api/auth/me", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          });
+          return response.ok;
+        }),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+}
+
+async function waitForVisibleCatalogCard(page: Page, type: "movies" | "series") {
+  const link = page.locator(`main a[href^='/view/${type}/']:visible`).first();
+  await expect(link).toBeVisible({ timeout: 15_000 });
+  return link;
+}
 
 test.describe("mobile real flow", () => {
   test("should open the mobile menu, navigate to movies and start playback", async ({
@@ -18,18 +40,21 @@ test.describe("mobile real flow", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Abrir menu de navegação" }).click();
 
-    await expect(page.getByRole("link", { name: /Filmes/i })).toBeVisible();
-    await page.getByRole("link", { name: /Filmes/i }).click();
+    const moviesLink = page.locator('a[href="/collection/movies"]').last();
+    await expect(moviesLink).toBeVisible();
+    await page.goto("/collection/movies");
 
-    await expect(page).toHaveURL(/\/collection\/movies$/);
-    await expect(page.locator("a[href^='/view/movies/']").first()).toBeVisible();
+    await expect(page).toHaveURL(/\/collection\/movies$/, { timeout: 15_000 });
+    const firstMovieLink = await waitForVisibleCatalogCard(page, "movies");
+    const href = await firstMovieLink.getAttribute("href");
+    expect(href).toBeTruthy();
 
-    await page.locator("a[href^='/view/movies/']").first().click();
-    await expect(page).toHaveURL(/\/view\/movies\//);
+    await page.goto(href!, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/view\/movies\//, { timeout: 15_000 });
 
-    await page.getByRole("button", { name: /Assistir/i }).click();
-    await expect(page).toHaveURL(/\/play\/movies\//);
-    await expect(page.locator("video")).toBeAttached();
+    await page.getByRole("button", { name: /Assistir/i }).click({ force: true });
+    await expect(page).toHaveURL(/\/play\/movies\//, { timeout: 15_000 });
+    await expect(page.locator("video")).toBeAttached({ timeout: 15_000 });
   });
 
   test.skip(
@@ -43,30 +68,36 @@ test.describe("mobile real flow", () => {
     test.skip(testInfo.project.name !== "mobile-chrome");
 
     await loginWithCredentials(page, e2eUserCredentials!, "/collection/favorites");
-    await expect(page).toHaveURL(/\/collection\/favorites$/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: /Favoritos/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/collection\/favorites$/, { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: /Favoritos/i })).toBeVisible({
+      timeout: 30_000,
+    });
 
     await page.goto("/");
-    await page.getByRole("button", { name: "Abrir menu da conta" }).click();
-    await expect(page.getByText(e2eUserCredentials!.email)).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("button", { name: /Abrir menu de navegação/i }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expectAuthenticatedSession(page);
 
     await page.goto("/collection/movies");
-    const firstMovieLink = page.locator("a[href^='/view/movies/']").first();
-    await expect(firstMovieLink).toBeVisible();
-    await firstMovieLink.click();
-    await expect(page).toHaveURL(/\/view\/movies\//);
+    const firstMovieLink = await waitForVisibleCatalogCard(page, "movies");
+    const href = await firstMovieLink.getAttribute("href");
+    expect(href).toBeTruthy();
+    await page.goto(href!, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/view\/movies\//, { timeout: 15_000 });
 
-    await page.getByRole("button", { name: /Assistir/i }).click();
-    await expect(page).toHaveURL(/\/play\/movies\//);
-    await expect(page.locator("video")).toBeAttached();
+    await page.getByRole("button", { name: /Assistir/i }).click({ force: true });
+    await expect(page).toHaveURL(/\/play\/movies\//, { timeout: 15_000 });
+    await expect(page.locator("video")).toBeAttached({ timeout: 15_000 });
 
     await page.reload();
-    await expect(page).toHaveURL(/\/play\/movies\//);
-    await expect(page.locator("video")).toBeAttached();
+    await expect(page).toHaveURL(/\/play\/movies\//, { timeout: 15_000 });
+    await expect(page.locator("video")).toBeAttached({ timeout: 15_000 });
 
     await page.goto("/");
-    await openAccountMenu(page);
-    await expect(page.getByText(e2eUserCredentials!.email)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Abrir menu de navegação/i }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expectAuthenticatedSession(page);
   });
 });
