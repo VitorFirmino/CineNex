@@ -17,7 +17,7 @@ import type {
 } from "@shared/types/catalog-types";
 import type { HighlightItem, HighlightRow, HomeHighlights } from "@shared/types/highlights-types";
 import type { CarouselApi } from "@components/ui/carousel";
-import { useCatalogStore, selectCurrentData, type ViewMode } from "@store/catalog-store";
+import { useCatalogStore, type ViewMode } from "@store/catalog-store";
 import { useCatalogFilters } from "./use-catalog-filters";
 
 export type { ViewMode } from "@store/catalog-store";
@@ -258,8 +258,8 @@ export function useCatalogExplorer({
 
   const listRequestIdRef = useRef(0);
   const [heroApi, setHeroApi] = useState<CarouselApi>();
-  const tab = useCatalogStore((s) => s.tab);
-  const viewMode = useCatalogStore((s) => s.viewMode);
+  const tabState = useCatalogStore((s) => s.tab);
+  const viewModeState = useCatalogStore((s) => s.viewMode);
   const query = useCatalogStore((s) => s.query);
   const isCommandOpen = useCatalogStore((s) => s.isCommandOpen);
   const page = useCatalogStore((s) => s.page);
@@ -269,7 +269,8 @@ export function useCatalogExplorer({
   const isChangingPage = useCatalogStore((s) => s.isChangingPage);
   const heroIndex = useCatalogStore((s) => s.heroIndex);
   const recentWatchItems = useCatalogStore((s) => s.recentWatchItems);
-  const currentData = useCatalogStore(selectCurrentData) as PaginationResult<CatalogItem> | null;
+  const moviesData = useCatalogStore((s) => s.moviesData);
+  const seriesData = useCatalogStore((s) => s.seriesData);
 
   const {
     setTab,
@@ -292,12 +293,40 @@ export function useCatalogExplorer({
 
   const debouncedQuery = useDebouncedValue(query, 260);
 
+  const routeTab = useMemo(() => {
+    return (Object.entries(COLLECTION_ROUTE_BY_TAB) as Array<[CatalogType, string]>)
+      .find(([, route]) => route === pathname)?.[0] ?? null;
+  }, [pathname]);
+
+  const tab = routeTab ?? tabState;
+  const viewMode: ViewMode = routeTab
+    ? "browse"
+    : pathname === "/"
+      ? "discover"
+      : viewModeState;
+  const currentData = (tab === "movies" ? moviesData : seriesData) as PaginationResult<CatalogItem> | null;
+
   useEffect(() => {
     const { setViewMode: storeSetViewMode } = useCatalogStore.getState();
+
+    if (pathname === "/") {
+      storeSetViewMode("discover");
+      return;
+    }
+
+    const matchedTab = (Object.entries(COLLECTION_ROUTE_BY_TAB) as Array<
+      [CatalogType, string]
+    >).find(([, route]) => route === pathname)?.[0];
+
+    if (matchedTab) {
+      setTab(matchedTab);
+      storeSetViewMode("browse");
+      return;
+    }
+
     setTab(initialTab);
     storeSetViewMode(initialViewMode);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialTab, initialViewMode, pathname, setTab]);
 
   useEffect(() => {
     function updatePageSize() {
@@ -387,7 +416,9 @@ export function useCatalogExplorer({
     (value: string) => {
       const next = value as CatalogType;
       const nextPath = COLLECTION_ROUTE_BY_TAB[next];
+      const { setViewMode: storeSetViewMode } = useCatalogStore.getState();
       setTab(next);
+      storeSetViewMode("browse");
       resetGroupsAndPage();
       setIsLoadingList(true);
       if (pathname !== nextPath) {
