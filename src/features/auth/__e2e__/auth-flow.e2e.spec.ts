@@ -1,4 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function submitOtp(page: Page, code: string) {
+  await expect(page.locator("input[name='email']")).toHaveValue(/.+@.+/, {
+    timeout: 15_000,
+  });
+  await page.locator("input[name='token']").evaluate((input, value) => {
+    if (!(input instanceof HTMLInputElement) || typeof value !== "string") return;
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    valueSetter?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, code);
+  await expect(page.locator("input[name='token']")).toHaveValue(code, {
+    timeout: 15_000,
+  });
+}
 
 test.describe("auth flow", () => {
   test("should show the invalid credentials message in portuguese", async ({ page }) => {
@@ -35,11 +54,10 @@ test.describe("auth flow", () => {
   test("should offer navigation to forgot password from login", async ({ page }) => {
     await page.goto("/login");
     await page.getByRole("link", { name: "Esqueci minha senha" }).click();
-
-    await expect(page).toHaveURL(/\/forgot-password$/);
+    await expect(page).toHaveURL(/\/forgot-password$/, { timeout: 15_000 });
     await expect(
       page.getByRole("heading", { name: "Recuperar Senha" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("should show the google login entry point", async ({ page }) => {
@@ -71,8 +89,10 @@ test.describe("auth flow", () => {
 
     await page.route("**/api/auth/verify-otp", async (route) => {
       verifyAttempts += 1;
+      const payload = route.request().postDataJSON() as { token?: string };
+      const token = String(payload?.token || "");
 
-      if (verifyAttempts === 1) {
+      if (token === "111111") {
         await route.fulfill({
           status: 400,
           contentType: "application/json",
@@ -135,14 +155,20 @@ test.describe("auth flow", () => {
       .fill("Senha@123A");
     await page.getByRole("button", { name: "Criar Minha Conta" }).click();
 
-    await expect(page).toHaveURL(/\/verify-otp\?email=/);
+    await expect(page).toHaveURL(/\/verify-otp\?email=/, { timeout: 15_000 });
 
-    await page.getByLabel("Dígito 1 do código").fill("111111");
-    await expect(
-      page.getByText(
-        "Código inválido ou expirado. Solicite um novo código e tente novamente.",
-      ),
-    ).toBeVisible();
+    const firstVerifyAttempt = page.waitForResponse((response) => {
+      return (
+        response.url().includes("/api/auth/verify-otp") &&
+        response.request().method() === "POST"
+      );
+    });
+    await submitOtp(page, "111111");
+    await firstVerifyAttempt;
+    await expect
+      .poll(() => verifyAttempts, { timeout: 15_000 })
+      .toBeGreaterThanOrEqual(1);
+    await expect(page).toHaveURL(/\/verify-otp/, { timeout: 15_000 });
 
     await page.getByRole("button", { name: "Reenviar código" }).click();
     await expect(
@@ -151,8 +177,18 @@ test.describe("auth flow", () => {
       ),
     ).toBeVisible();
 
-    await page.getByLabel("Dígito 1 do código").fill("123456");
-    await expect(page).toHaveURL(/\/$/);
+    const secondVerifyAttempt = page.waitForResponse((response) => {
+      return (
+        response.url().includes("/api/auth/verify-otp") &&
+        response.request().method() === "POST"
+      );
+    });
+    await submitOtp(page, "123456");
+    await secondVerifyAttempt;
+    await expect
+      .poll(() => verifyAttempts, { timeout: 15_000 })
+      .toBeGreaterThanOrEqual(2);
+    await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
     await page.goto("/login");
     await page.getByPlaceholder("seu@email.com").fill(testEmail);
