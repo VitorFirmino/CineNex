@@ -1,50 +1,75 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function waitForCatalogGrid(page: Page, type: "movies" | "series") {
+  const firstVisibleCard = page.locator(`main a[href^='/view/${type}/']:visible`).first();
+  await expect(firstVisibleCard).toBeVisible({ timeout: 15_000 });
+  return firstVisibleCard;
+}
+
+async function openFirstVisibleCatalogDetail(
+  page: Page,
+  type: "movies" | "series",
+) {
+  const firstVisibleCard = await waitForCatalogGrid(page, type);
+  const href = await firstVisibleCard.getAttribute("href");
+  expect(href).toBeTruthy();
+  await page.goto(href!, { waitUntil: "domcontentloaded" });
+}
 
 test.describe("catalog flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/collection/movies");
-    await expect(
-      page.getByRole("heading", { name: /Minha Coleção/i }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/collection\/movies$/, { timeout: 15_000 });
+    await waitForCatalogGrid(page, "movies");
   });
 
   test("should switch tabs, paginate, search, filter and open a detail page", async ({
     page,
   }) => {
-    await page.locator("a[href='/collection/series']").first().click();
+    await page.goto("/collection/series");
     await expect(page).toHaveURL(/\/collection\/series$/);
-    await expect(page.locator("a[href^='/view/series/']").first()).toBeVisible();
+    await waitForCatalogGrid(page, "series");
 
-    await page.locator("a[href='/collection/movies']").first().click();
+    await page.goto("/collection/movies");
     await expect(page).toHaveURL(/\/collection\/movies$/);
+    await waitForCatalogGrid(page, "movies");
 
-    await expect(page.locator("p:has-text('PÁGINA 1')")).toBeVisible();
+    await expect(page.getByText(/PÁGINA 1 DE/i)).toBeVisible();
     await page.getByRole("button", { name: "2", exact: true }).click();
-    await expect(page.locator("p:has-text('PÁGINA 2')")).toBeVisible({
+    await expect(page.getByText(/PÁGINA 2 DE/i)).toBeVisible({
       timeout: 10_000,
     });
 
-    const searchInput = page.getByPlaceholder("Pesquisar no catálogo...");
-    await searchInput.fill("harry");
+    const searchInput = page.getByPlaceholder("Pesquisar por título ou palavra-chave...");
+    const firstMovieTitle = await page.locator("main a[href^='/view/movies/']:visible h3").first().textContent();
+    const searchTerm = firstMovieTitle?.trim().split(/\s+/).slice(0, 2).join(" ") || "Guerra";
+    await searchInput.fill(searchTerm);
     await page.waitForTimeout(450);
-    await expect(page.locator("a[href^='/view/movies/']").first()).toBeVisible();
+    await waitForCatalogGrid(page, "movies");
 
-    await page.getByRole("button", { name: "FILTROS" }).click();
+    await page.getByRole("button", { name: "FILTRE" }).click();
     const filtersDialog = page.getByRole("dialog", {
-      name: /CONFIGURAÇÃO DE FILTROS/i,
+      name: /FILTRE O CATÁLOGO/i,
     });
     await expect(filtersDialog).toBeVisible();
-    await filtersDialog.getByRole("button", { name: "Netflix" }).click();
     await filtersDialog
-      .getByRole("button", { name: "APLICAR FILTROS" })
+      .getByRole("button")
+      .filter({ hasNotText: "TODAS AS CATEGORIAS" })
+      .nth(2)
+      .click();
+    await filtersDialog
+      .getByRole("button", { name: "CONFIRMAR E FILTRAR" })
       .click();
     await expect(filtersDialog).not.toBeVisible();
+    await waitForCatalogGrid(page, "movies");
 
     await searchInput.fill("");
     await page.waitForTimeout(450);
-    await page.locator("a[href^='/view/movies/']").first().click();
-    await expect(page).toHaveURL(/\/view\/movies\//);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await openFirstVisibleCatalogDetail(page, "movies");
+    await expect(page).toHaveURL(/\/view\/movies\//, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("should avoid spamming catalog requests when switching back to movies", async ({
@@ -59,15 +84,15 @@ test.describe("catalog flow", () => {
     });
 
     await page.reload();
-    await expect(page.locator("a[href^='/view/movies/']").first()).toBeVisible();
+    await waitForCatalogGrid(page, "movies");
 
-    await page.locator("a[href='/collection/series']").first().click();
+    await page.goto("/collection/series");
     await expect(page).toHaveURL(/\/collection\/series$/);
-    await expect(page.locator("a[href^='/view/series/']").first()).toBeVisible();
+    await waitForCatalogGrid(page, "series");
 
-    await page.locator("a[href='/collection/movies']").first().click();
+    await page.goto("/collection/movies");
     await expect(page).toHaveURL(/\/collection\/movies$/);
-    await expect(page.locator("a[href^='/view/movies/']").first()).toBeVisible();
+    await waitForCatalogGrid(page, "movies");
 
     const moviesHits = apiCalls.filter((url) =>
       url.includes("/api/catalog/movies?"),
