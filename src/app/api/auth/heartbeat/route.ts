@@ -2,8 +2,31 @@ import { prisma } from "@infrastructure/database/prisma";
 import { NextResponse } from "next/server";
 import { createClient } from "@infrastructure/supabase/server";
 import { ensureProfileForUser } from "@services/auth/profile-sync";
+import { Prisma } from "@prisma/client";
 
 const HEARTBEAT_MIN_UPDATE_MS = 90_000;
+
+function isIgnorableBodyReadError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  if (!(error instanceof Error)) {
+    const maybeError = error as { code?: unknown; message?: unknown; name?: unknown } | null;
+    return (
+      maybeError?.name === "AbortError" ||
+      maybeError?.code === "ECONNRESET" ||
+      maybeError?.message === "Unexpected end of JSON input" ||
+      (typeof maybeError?.message === "string" &&
+        maybeError.message.toLowerCase().includes("aborted"))
+    );
+  }
+
+  const maybeError = error as Error & { code?: unknown };
+  return (
+    error.name === "AbortError" ||
+    maybeError.code === "ECONNRESET" ||
+    error.message === "Unexpected end of JSON input" ||
+    error.message.toLowerCase().includes("aborted")
+  );
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -16,6 +39,10 @@ export async function POST(request: Request) {
   }
 
   const { currentContent } = await request.json().catch((error: unknown) => {
+    if (isIgnorableBodyReadError(error)) {
+      return {};
+    }
+
     console.error("[auth/heartbeat] Falha ao interpretar corpo da requisicao.", error);
     return {};
   });
@@ -27,7 +54,21 @@ export async function POST(request: Request) {
   const staleBefore = new Date(now.getTime() - HEARTBEAT_MIN_UPDATE_MS);
 
   try {
-    await ensureProfileForUser(user);
+    try {
+      await ensureProfileForUser(user);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2028"
+      ) {
+        console.warn(
+          "[auth/heartbeat] Pulando sync de profile por contencao transitoria de transacao.",
+          error,
+        );
+      } else {
+        throw error;
+      }
+    }
 
     const existingProfile = await prisma.profile.findUnique({
       where: { id: user.id },
