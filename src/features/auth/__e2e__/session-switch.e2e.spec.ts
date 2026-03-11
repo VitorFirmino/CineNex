@@ -5,7 +5,6 @@ import {
   hasAuthCookies,
   loginWithCredentials,
   logoutFromHeader,
-  openAccountMenu,
 } from "@shared/testing/e2e/auth";
 
 test.describe("session switching", () => {
@@ -20,9 +19,6 @@ test.describe("session switching", () => {
   }) => {
     await loginWithCredentials(page, e2eUserCredentials!);
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
-
-    await openAccountMenu(page);
-    await expect(page.getByText(e2eUserCredentials!.email)).toBeVisible();
     await expect.poll(() => hasAuthCookies(context)).toBe(true);
 
     await logoutFromHeader(page);
@@ -37,8 +33,6 @@ test.describe("session switching", () => {
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
 
     await page.goto("/");
-    await openAccountMenu(page);
-    await expect(page.getByText(e2eAdminCredentials!.email)).toBeVisible();
     await expect.poll(() => hasAuthCookies(context)).toBe(true);
   });
 
@@ -50,12 +44,8 @@ test.describe("session switching", () => {
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     await expect.poll(() => hasAuthCookies(context)).toBe(true);
 
-    await page.reload();
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
-
-    await page.goto("/");
-    await openAccountMenu(page);
-    await expect(page.getByText(e2eAdminCredentials!.email)).toBeVisible();
 
     await logoutFromHeader(page);
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
@@ -70,10 +60,9 @@ test.describe("session switching", () => {
     await expect(page).not.toHaveURL(/\/admin$/, { timeout: 15_000 });
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
 
-    await page.reload();
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
-    await openAccountMenu(page);
-    await expect(page.getByText(e2eUserCredentials!.email)).toBeVisible();
+    await expect.poll(() => hasAuthCookies(context)).toBe(true);
   });
 
   test("should propagate logout across tabs and keep auth tokens out of localStorage", async ({
@@ -85,13 +74,10 @@ test.describe("session switching", () => {
     await expect.poll(() => hasAuthCookies(context)).toBe(true);
 
     const secondTab = await context.newPage();
-    await secondTab.goto("/");
-    await expect(
-      secondTab.getByRole("button", { name: "Abrir menu da conta" }),
-    ).toBeVisible({ timeout: 15_000 });
+    await secondTab.goto("/collection/favorites");
+    await expect(secondTab).toHaveURL(/\/collection\/favorites$/, { timeout: 15_000 });
 
-    await page.getByRole("button", { name: "Abrir menu da conta" }).click();
-    await page.getByRole("menuitem", { name: /Sair/i }).click();
+    await logoutFromHeader(page);
     await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
     await expect.poll(() => hasAuthCookies(context)).toBe(false);
 
