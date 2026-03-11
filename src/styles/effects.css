@@ -1,0 +1,217 @@
+@keyframes heart-pop {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.7;
+  }
+  35% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes matrix-drift {
+  0% {
+    transform: translate3d(-1.5%, -1.5%, 0) scale(1.01);
+  }
+  100% {
+    transform: translate3d(1.5%, 1.5%, 0) scale(1.01);
+  }
+}
+
+@keyframes matrix-shift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -1.5%, 0) scale(1.02);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes laser-scan {
+  0% {
+    transform: translateX(-120%) skewX(-12deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(220%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes tile-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-heart-pop {
+  animation: heart-pop 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.texture-noise {
+  position: relative;
+}
+
+.texture-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.07) 1px, transparent 0);
+  background-size: 3px 3px;
+  mix-blend-mode: soft-light;
+}
+
+.texture-noise > * {
+  position: relative;
+  z-index: 1;
+}
+
+.headline-neo {
+  font-family: "Bebas Neue", "Archivo Black", "Teko", "Barlow Condensed", var(--font-sans);
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+
+.futuristic-bg {
+  background:
+    radial-gradient(circle at 20% 20%, var(--glow-12), transparent 38%),
+    radial-gradient(circle at 80% 15%, rgba(236, 72, 153, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.95), rgba(1, 3, 10, 0.96));
+}
+
+.futuristic-bg__matrix {
+  position: absolute;
+  inset: -6%;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+  transform: rotate(-2.5deg) scale(1.06);
+  animation: matrix-drift 16s ease-in-out infinite alternate;
+}
+
+.futuristic-bg__tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  min-height: 9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 23, 0.44);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(2, 6, 23, 0.45);
+  animation: tile-glow 4s ease-in-out infinite;
+  animation-delay: var(--tile-delay, 0ms);
+}
+
+.futuristic-bg__tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--glow-18), transparent 45%);
+  mix-blend-mode: screen;
+}
+
+.futuristic-bg__mesh {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--overlay-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--overlay-grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle at center, black 34%, transparent 88%);
+  animation: matrix-shift 18s ease-in-out infinite;
+}
+
+.futuristic-bg__line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28%;
+  transform: skewX(-12deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--glow-75) 48%,
+    transparent 100%
+  );
+  filter: blur(0.5px);
+  animation: laser-scan 10s linear infinite;
+}
+
+.futuristic-bg__line--one {
+  left: -20%;
+  animation-delay: 0s;
+}
+
+.futuristic-bg__line--two {
+  left: -28%;
+  animation-delay: 2.8s;
+}
+
+.futuristic-bg__line--three {
+  left: -36%;
+  animation-delay: 5.4s;
+}
+
+.futuristic-bg__shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.64) 100%),
+    radial-gradient(circle at 50% 8%, var(--glow-20), transparent 45%);
+}
+
+@media (max-width: 1024px) {
+  .futuristic-bg__matrix {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.55rem;
+    transform: rotate(-1.8deg) scale(1.04);
+  }
+
+  .futuristic-bg__tile {
+    min-height: 7rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .futuristic-bg__matrix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .futuristic-bg__tile {
+    border-radius: 0.7rem;
+    min-height: 5.25rem;
+  }
+
+  .futuristic-bg__mesh {
+    background-size: 42px 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-heart-pop,
+  .futuristic-bg__matrix,
+  .futuristic-bg__tile,
+  .futuristic-bg__mesh,
+  .futuristic-bg__line {
+    animation: none !important;
+  }
+}
