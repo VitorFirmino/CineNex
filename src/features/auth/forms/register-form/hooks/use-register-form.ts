@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
 import { isAxiosError } from 'axios';
 import { authApi } from '@infrastructure/api/auth-api';
 import { registerSchema, type RegisterFormData } from '@shared/auth/register-schema';
@@ -14,7 +13,6 @@ export function useRegisterForm() {
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const form = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema) });
   const passwordValue = useWatch({
@@ -66,14 +64,15 @@ export function useRegisterForm() {
 
         if (payload.sessionCreated) {
           window.dispatchEvent(new Event('auth:changed'));
-          router.push('/');
-          router.refresh();
+          window.location.replace('/');
           return;
         }
 
         const encodedEmail = encodeURIComponent(data.email.trim().toLowerCase());
         const encodedMessage = encodeURIComponent(String(payload.message || AUTH_SAFE_SIGNUP_MESSAGE));
-        router.push(`/verify-otp?email=${encodedEmail}&message=${encodedMessage}`);
+        window.location.replace(
+          `/verify-otp?email=${encodedEmail}&message=${encodedMessage}`,
+        );
       } catch (error: unknown) {
         if (!isAxiosError(error)) {
           setError(translateAuthError('', 'register'));
