@@ -1,6 +1,7 @@
 import { uptime as getSystemUptime } from "node:os";
 import { prisma } from "@infrastructure/database/prisma";
 import { NextResponse } from "next/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 import { fetchTmdbMetadataById } from "@services/catalog/tmdb";
 
@@ -18,9 +19,10 @@ type TopFavoriteGroup = {
 export async function GET() {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSafeAuthUser(supabase, {
+      clearInvalidSession: true,
+      logContext: "admin/metrics",
+    });
 
     if (!user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
