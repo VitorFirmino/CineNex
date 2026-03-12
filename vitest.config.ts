@@ -9,9 +9,11 @@ export default defineConfig({
       "@features": path.resolve(__dirname, "src/features"),
       "@hooks": path.resolve(__dirname, "src/hooks"),
       "@infrastructure": path.resolve(__dirname, "src/infrastructure"),
+      "@lib": path.resolve(__dirname, "src/lib"),
       "@services": path.resolve(__dirname, "src/service"),
       "@shared": path.resolve(__dirname, "src/shared"),
       "@store": path.resolve(__dirname, "src/store"),
+      "@styles": path.resolve(__dirname, "src/styles"),
     },
   },
   test: {
