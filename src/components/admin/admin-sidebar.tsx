@@ -6,7 +6,7 @@ import {
   BarChart3, Users, LogOut, Home, MonitorPlay,
   Server, LayoutDashboard
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import {
   Sidebar,
@@ -117,6 +117,8 @@ function NavItem({
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   const isActive = (item: (typeof navMain)[0]) => {
     if (item.exact) return pathname === item.url;
@@ -128,25 +130,37 @@ export function AdminSidebar() {
       collapsible="icon"
       className="border-r border-white/5 top-14 !h-[calc(100svh-56px)] z-40 bg-zinc-950/50 backdrop-blur-2xl [&>[data-sidebar=sidebar]]:bg-transparent"
     >
-      {/* ─── Header ─────────────────────────────────────────────────────── */}
-      <SidebarHeader className="border-b border-white/[0.06] px-3 py-4">
+      <SidebarHeader className={cn(
+        "border-b border-white/[0.06] py-4 transition-all duration-200",
+        isCollapsed ? "px-2" : "px-3"
+      )}>
         <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden group">
           <div className="shrink-0 flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_16px_rgba(16,185,129,0.35)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-shadow">
             <BarChart3 className="size-4 text-white" />
           </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-sm font-black text-white tracking-tight leading-none">
-              Admin<span className="text-emerald-400">Panel</span>
-            </span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-500 mt-0.5">
-              Console
-            </span>
-          </div>
+          <AnimatePresence mode="wait">
+            {!isCollapsed && (
+              <motion.div
+                key="logo-text"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15 }}
+                className="flex flex-col overflow-hidden"
+              >
+                <span className="text-sm font-black text-white tracking-tight leading-none">
+                  Admin<span className="text-emerald-400">Panel</span>
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-500 mt-0.5">
+                  Console
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Link>
       </SidebarHeader>
 
-      {/* ─── Main Nav ───────────────────────────────────────────────────── */}
-      <SidebarContent className="px-2 py-3">
+      <SidebarContent className="py-3">
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 mb-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600">
             Principal
@@ -184,7 +198,6 @@ export function AdminSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* ─── Footer ─────────────────────────────────────────────────────── */}
       <SidebarFooter className="border-t border-white/[0.06] p-2">
         <SidebarMenu>
           <SidebarMenuItem>
