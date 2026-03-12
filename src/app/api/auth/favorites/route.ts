@@ -1,5 +1,6 @@
 import { prisma } from "@infrastructure/database/prisma";
 import { NextResponse } from "next/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 import { normalizeCatalogContentId } from "@shared/catalog/content-id";
 import { getLocalItemById } from "@services/catalog/db-store";
@@ -21,9 +22,10 @@ function legacyVariants(type: FavoriteType): string[] {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/favorites",
+  });
 
   if (!user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -81,9 +83,10 @@ export async function POST(request: Request) {
 
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/favorites",
+  });
 
   if (!user) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
