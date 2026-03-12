@@ -238,7 +238,6 @@ export const selectFilters = (s: CatalogStore): CatalogFiltersState => ({
 export const selectActiveAdvancedCount = (s: CatalogStore): number => {
   let count = 0;
   count += s.selectedGroups.length;
-  if (s.legendado !== 'all') count += 1;
   if (s.hasPoster !== 'all') count += 1;
   if (s.sort !== 'default') count += 1;
   if (s.tab !== 'series' && s.codec !== 'all') count += 1;

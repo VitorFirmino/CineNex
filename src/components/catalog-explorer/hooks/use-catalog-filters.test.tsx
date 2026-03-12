@@ -31,7 +31,7 @@ describe("use-catalog-filters", () => {
     const { result } = renderHook(() => useCatalogFilters());
 
     expect(result.current.selectedGroups).toEqual(["Aventura", "Drama"]);
-    expect(result.current.activeAdvancedCount).toBe(8);
+    expect(result.current.activeAdvancedCount).toBe(7);
     expect(result.current.isAdvancedOpen).toBe(true);
     expect(result.current.sortOptions.map((option) => option.value)).toContain("year_desc");
   });

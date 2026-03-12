@@ -377,7 +377,6 @@ export function CatalogExplorer({
   const {
     selectedGroups,
     quality,
-    legendado,
     isAdvancedOpen,
     setIsAdvancedOpen,
     sortOptions,
@@ -385,7 +384,6 @@ export function CatalogExplorer({
     onSelectSingleGroup,
     onToggleGroupFilter,
     onSortChange,
-    setLegendado,
     resetAdvancedFilters,
     sort,
   } = filters;
@@ -652,7 +650,6 @@ export function CatalogExplorer({
               isAdvancedOpen={isAdvancedOpen}
               isCommandOpen={isCommandOpen}
               isLoadingList={isLoadingList}
-              legendado={legendado}
               onPageChange={onPageChange}
               onQueryChange={onQueryChange}
               onSelectSingleGroup={(value) => {
@@ -669,7 +666,6 @@ export function CatalogExplorer({
               selectedGroups={selectedGroups}
               setIsAdvancedOpen={setIsAdvancedOpen}
               setIsCommandOpen={setIsCommandOpen}
-              setLegendado={setLegendado}
               sort={sort}
               sortOptions={sortOptions}
               tab={tab}

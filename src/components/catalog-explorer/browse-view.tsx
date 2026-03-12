@@ -10,13 +10,13 @@ import { FavoriteButton } from "@components/favorite-button";
 import { Input } from "@components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select";
 import { Skeleton } from "@components/ui/skeleton";
-import { Check, ChevronLeft, ChevronRight, Command as CommandIcon, LayoutGrid, Play, Search, SlidersHorizontal, Sparkles, TrendingUp, X as XIcon } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Command as CommandIcon, Play, Search, SlidersHorizontal, TrendingUp, X as XIcon } from "lucide-react";
 import type { CatalogType, GroupCount } from "@shared/types/catalog-types";
 import { cleanTitleForSearch, cn, formatNumber, sanitizeDisplayTitle } from "@shared/utils";
 import { SafeImage } from "@components/safe-image";
 import { buildPagination, COLLECTION_ROUTE_BY_TAB, type CatalogItem } from "./hooks/use-catalog-explorer";
 import { MAX_GROUP_FILTERS } from "./hooks/use-catalog-filters";
-import type { LegendadoFilter, SortOptions, SortValue } from "@store/catalog-store";
+import type { SortOptions, SortValue } from "@store/catalog-store";
 
 const SearchCommand = dynamic(
   () => import("@components/search-command").then((m) => m.SearchCommand),
@@ -30,7 +30,6 @@ interface BrowseViewProps {
   isAdvancedOpen: boolean;
   isCommandOpen: boolean;
   isLoadingList: boolean;
-  legendado: LegendadoFilter;
   onPageChange: (page: number) => void;
   onQueryChange: (value: string) => void;
   onSelectSingleGroup: (value: string) => void;
@@ -44,7 +43,6 @@ interface BrowseViewProps {
   selectedGroups: ReadonlyArray<string>;
   setIsAdvancedOpen: (open: boolean) => void;
   setIsCommandOpen: (open: boolean) => void;
-  setLegendado: (value: LegendadoFilter) => void;
   sort: SortValue;
   sortOptions: SortOptions;
   tab: CatalogType;
@@ -58,7 +56,6 @@ export function BrowseView({
   isAdvancedOpen,
   isCommandOpen,
   isLoadingList,
-  legendado,
   onPageChange,
   onQueryChange,
   onSelectSingleGroup,
@@ -72,7 +69,6 @@ export function BrowseView({
   selectedGroups,
   setIsAdvancedOpen,
   setIsCommandOpen,
-  setLegendado,
   sort,
   sortOptions,
   tab,
@@ -177,7 +173,7 @@ export function BrowseView({
                   </span>
                 </div>
 
-                {(selectedGroups.length > 0 || quality !== "all" || legendado !== "all") && (
+                {(selectedGroups.length > 0 || quality !== "all") && (
                   <>
                     <div className="h-4 w-px bg-white/10 mx-2 hidden md:block" />
                     <div className="flex flex-wrap gap-2">
@@ -189,11 +185,6 @@ export function BrowseView({
                       {quality !== "all" && (
                         <Badge variant="tech" className="bg-violet-500/5 text-violet-400 border-violet-500/10 py-1.5 px-4 rounded-xl font-bold text-[10px]">
                           {quality}
-                        </Badge>
-                      )}
-                      {legendado !== "all" && (
-                        <Badge variant="tech" className="bg-blue-500/5 text-blue-400 border-blue-500/10 py-1.5 px-4 rounded-xl font-bold text-[10px]">
-                          {legendado === "yes" ? "Legendado" : "Dublado"}
                         </Badge>
                       )}
                     </div>
@@ -363,7 +354,7 @@ export function BrowseView({
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto p-8 sm:p-12 space-y-12 no-scrollbar relative z-10">
-            <div className="grid gap-10 sm:grid-cols-2">
+            <div className="space-y-4">
               <div className="space-y-4">
                 <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
                   ORDEM DE EXIBIÇÃO
@@ -382,27 +373,6 @@ export function BrowseView({
                         {option.label}
                       </SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
-                  TIPO DE ÁUDIO
-                </p>
-                <Select value={legendado} onValueChange={(value) => setLegendado(value as LegendadoFilter)}>
-                  <SelectTrigger className="h-16 rounded-2xl border-white/5 bg-white/[0.03] font-black text-xs tracking-widest uppercase focus:ring-emerald-500/30">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#0f1115] border-white/10">
-                    <SelectItem value="all" className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600">
-                      TODOS OS TÍTULOS
-                    </SelectItem>
-                    <SelectItem value="no" className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600">
-                      DUBLADO (PT-BR)
-                    </SelectItem>
-                    <SelectItem value="yes" className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600">
-                      LEGENDADO / ORIGINAL
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

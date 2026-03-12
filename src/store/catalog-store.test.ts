@@ -143,7 +143,7 @@ describe("catalog-store", () => {
     });
 
     expect(selectSortOptions(useCatalogStore.getState())).toEqual(MOVIES_SORT_OPTIONS);
-    expect(selectActiveAdvancedCount(useCatalogStore.getState())).toBe(8);
+    expect(selectActiveAdvancedCount(useCatalogStore.getState())).toBe(7);
 
     useCatalogStore.setState({
       tab: "series",
@@ -154,7 +154,7 @@ describe("catalog-store", () => {
     });
 
     expect(selectSortOptions(useCatalogStore.getState())).toEqual(SERIES_SORT_OPTIONS);
-    expect(selectActiveAdvancedCount(useCatalogStore.getState())).toBe(6);
+    expect(selectActiveAdvancedCount(useCatalogStore.getState())).toBe(5);
   });
 
   it("should ignore page changes while a change is already in progress", () => {
