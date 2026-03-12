@@ -8,7 +8,9 @@ const globalForPrisma = globalThis as unknown as {
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new pg.Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(
+  pool as unknown as ConstructorParameters<typeof PrismaPg>[0],
+);
 const shouldLogPrismaQueries = process.env.PRISMA_LOG_QUERIES === "true";
 
 export const prisma =
