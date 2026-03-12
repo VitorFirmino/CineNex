@@ -1,5 +1,6 @@
 import { prisma } from "@infrastructure/database/prisma";
 import { NextResponse } from "next/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 import { ensureProfileForUser } from "@services/auth/profile-sync";
 import { Prisma } from "@prisma/client";
@@ -30,9 +31,10 @@ function isIgnorableBodyReadError(error: unknown): boolean {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/heartbeat",
+  });
 
   if (!user) {
     return NextResponse.json({ active: false }, { status: 401 });
