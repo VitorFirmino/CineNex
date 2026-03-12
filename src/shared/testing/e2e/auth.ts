@@ -110,10 +110,36 @@ export async function openAccountMenu(page: Page): Promise<void> {
   const mobileTrigger = page.getByRole("button", {
     name: /Abrir menu de navegação/i,
   }).first();
+  const desktopLogout = page.getByRole("menuitem", { name: /Sair/i }).first();
+  const mobileLogout = page.getByRole("button", { name: /^Sair$/i }).first();
+
+  await expect
+    .poll(
+      async () =>
+        (await isVisible(trigger)) ||
+        (await isVisible(mobileTrigger)) ||
+        (await isVisible(loadingTrigger)) ||
+        (await isVisible(desktopLogout)) ||
+        (await isVisible(mobileLogout)),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+
+  if (await isVisible(desktopLogout) || await isVisible(mobileLogout)) {
+    await waitForAccountMenuContent(page);
+    return;
+  }
 
   if (await isVisible(loadingTrigger)) {
     await expect
-      .poll(async () => (await isVisible(trigger)) || (await isVisible(mobileTrigger)))
+      .poll(
+        async () =>
+          (await isVisible(trigger)) ||
+          (await isVisible(mobileTrigger)) ||
+          (await isVisible(desktopLogout)) ||
+          (await isVisible(mobileLogout)),
+        { timeout: 15_000 },
+      )
       .toBe(true);
   }
 
@@ -134,8 +160,6 @@ export async function openAccountMenu(page: Page): Promise<void> {
   }
 
   await expect(mobileTrigger).toBeVisible({ timeout: 15_000 });
-
-  const mobileLogout = page.getByRole("button", { name: /^Sair$/i }).first();
   if (await isVisible(mobileLogout)) {
     return;
   }
