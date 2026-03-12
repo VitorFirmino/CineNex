@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getSafeAuthUser } from '@infrastructure/supabase/auth';
 
 export async function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/auth/callback')) {
@@ -39,7 +40,10 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: 'proxy',
+  });
 
   const isLoginPage = request.nextUrl.pathname.startsWith('/login');
   const isRegisterPage = request.nextUrl.pathname.startsWith('/register');
