@@ -3,9 +3,8 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Skeleton } from "@components/ui/skeleton";
 import {
@@ -14,56 +13,44 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@components/ui/carousel";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@components/ui/dialog";
-import { Input } from "@components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/ui/select";
-import type { CatalogType, GroupCount } from "@shared/types/catalog-types";
+import type { CatalogType } from "@shared/types/catalog-types";
 import type { HighlightItem, HighlightRow, HomeHighlights } from "@shared/types/highlights-types";
 import {
   ChevronLeft,
   ChevronRight,
   Play,
-  Search,
-  SlidersHorizontal,
   Sparkles,
-  Command as CommandIcon,
   Info,
-  Check,
-  TrendingUp,
   LayoutGrid,
-  X as XIcon,
 } from "lucide-react";
-import { cn, sanitizeDisplayTitle, cleanTitleForSearch, formatNumber } from "@shared/utils";
+import { cn, sanitizeDisplayTitle } from "@shared/utils";
 import { SafeImage } from "@components/safe-image";
-import { FavoriteButton } from "@components/favorite-button";
 import {
   useCatalogExplorer,
   placeholderImage,
   resolveExternalHighlightPath,
   resolveExternalHighlightPlayPath,
-  buildPagination,
   COLLECTION_ROUTE_BY_TAB,
-  type CatalogItem,
 } from "./hooks/use-catalog-explorer";
-import { MAX_GROUP_FILTERS } from "./hooks/use-catalog-filters";
-import type { LegendadoFilter, SortValue, ViewMode } from "@store/catalog-store";
+import type { ViewMode } from "@store/catalog-store";
 
-const SearchCommand = dynamic(
-  () => import("@components/search-command").then((m) => m.SearchCommand),
-  { ssr: false },
+const BrowseView = dynamic(
+  () => import("./browse-view").then((m) => m.BrowseView),
+  {
+    loading: () => (
+      <section className="space-y-12 px-4 xs:px-6 sm:px-12 lg:px-20 pb-20">
+        <div className="space-y-6">
+          <Skeleton className="h-24 w-full max-w-2xl rounded-[2rem] bg-white/5" />
+          <Skeleton className="h-16 w-full rounded-[2rem] bg-white/5" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 sm:gap-8">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <Skeleton key={index} className="aspect-[2/3] rounded-[2rem] bg-white/5" />
+            ))}
+          </div>
+        </div>
+      </section>
+    ),
+  },
 );
 
 interface HighlightCarouselProps {
@@ -133,10 +120,16 @@ function HighlightCarousel({
   };
 
   return (
-    <section className="group/section space-y-8 relative px-4 xs:px-6 sm:px-12 lg:px-20">
+    <section
+      className="group/section space-y-8 relative px-4 xs:px-6 sm:px-12 lg:px-20"
+      style={{
+        contentVisibility: rowIndex === 0 ? "visible" : "auto",
+        containIntrinsicSize: isWide ? "720px" : "540px",
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <motion.h3
+          <motion.h2
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -144,7 +137,7 @@ function HighlightCarousel({
           >
             <span className={cn("size-2 rounded-full", dotColorMap[accentColor as keyof typeof dotColorMap])} />
             {row.title}
-          </motion.h3>
+          </motion.h2>
           {row.caption && (
             <p className="text-zinc-500 text-[10px] sm:text-xs font-bold uppercase tracking-[0.4em] ml-6 opacity-70">
               {row.caption}
@@ -238,14 +231,14 @@ function HighlightCarousel({
                       <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8 opacity-100 transition-all duration-500">
                         <div className="space-y-3">
                           <div className="space-y-1">
-                            <h4
+                            <h3
                               className={cn(
                                 "font-black text-white leading-[1.1] tracking-tighter uppercase italic line-clamp-2",
                                 isWide ? "text-2xl sm:text-3xl" : "text-lg sm:text-xl",
                               )}
                             >
                               {sanitizeDisplayTitle(item.title)}
-                            </h4>
+                            </h3>
                             <p
                               className={cn(
                                 "text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] opacity-80",
@@ -274,6 +267,73 @@ function HighlightCarousel({
           })}
         </CarouselContent>
       </Carousel>
+    </section>
+  );
+}
+
+function DeferredHighlightCarousel({
+  row,
+  rowIndex,
+}: HighlightCarouselProps) {
+  const placeholderRef = useRef<HTMLElement | null>(null);
+  const [isVisible, setIsVisible] = useState(rowIndex < 2);
+
+  useEffect(() => {
+    if (isVisible) return;
+
+    const node = placeholderRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "450px 0px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isVisible]);
+
+  if (isVisible) {
+    return <HighlightCarousel row={row} rowIndex={rowIndex} />;
+  }
+
+  return (
+    <section
+      ref={placeholderRef}
+      aria-hidden="true"
+      className="relative px-4 xs:px-6 sm:px-12 lg:px-20"
+      style={{
+        contentVisibility: "auto",
+        containIntrinsicSize: rowIndex === 0 ? "720px" : "540px",
+      }}
+    >
+      <div className="space-y-8">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56 rounded-full bg-white/10" />
+          <Skeleton className="h-3 w-72 rounded-full bg-white/5" />
+        </div>
+        <div className="flex gap-4 overflow-hidden">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton
+              key={index}
+              className={cn(
+                "shrink-0 rounded-[2rem] bg-white/5",
+                rowIndex === 0
+                  ? "aspect-video w-[88%] sm:w-[42%] lg:w-[30%]"
+                  : "aspect-[2/3] w-[62%] xs:w-[46%] sm:w-[31%] lg:w-[19%]",
+              )}
+            />
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -330,21 +390,6 @@ export function CatalogExplorer({
     sort,
   } = filters;
 
-  const handleToggleGroupFilter = (value: string) => onToggleGroupFilter(value);
-
-  const handleSortChange = (value: string) =>
-    onSortChange(value as SortValue);
-
-  const handleLegendadoChange = (value: string) =>
-    setLegendado(value as LegendadoFilter);
-
-  const handleResetAdvancedFilters = () => resetAdvancedFilters();
-
-  const handleSelectSingleGroup = (value: string) => {
-    onSelectSingleGroup(value);
-    catalogSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
     <main className="texture-noise relative min-h-screen overflow-x-clip text-zinc-100 pt-16">
       <section className="relative group/hero overflow-hidden border-b border-white/5">
@@ -385,8 +430,8 @@ export function CatalogExplorer({
                             loading={eagerLoadSlide ? "eager" : "lazy"}
                             priority={eagerLoadSlide}
                             className={cn(
-                              "object-cover object-center transition-all duration-[10000ms] ease-out",
-                              isActive ? "scale-[1.08] opacity-100" : "scale-100 opacity-60",
+                              "object-cover object-center transition-opacity duration-300 ease-out sm:transition-all sm:duration-[10000ms]",
+                              isActive ? "scale-100 opacity-100 sm:scale-[1.08]" : "scale-100 opacity-60",
                             )}
                           />
                         </div>
@@ -422,19 +467,38 @@ export function CatalogExplorer({
               </Button>
             </div>
 
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:bottom-12 sm:right-12 flex items-center gap-2 sm:gap-3 z-30 sm:pb-4">
-              {heroSlides.map((_, i) => (
-                <button
-                  key={i}
-                  className={cn(
-                    "h-1 sm:h-1.5 rounded-full transition-all duration-700",
-                    i === heroIndex
-                      ? "w-8 sm:w-16 bg-emerald-400 shadow-[0_0_20px_var(--glow-full)]"
-                      : "w-2 sm:w-3 bg-white/30 hover:bg-white/50",
-                  )}
-                  onClick={() => heroApi?.scrollTo(i)}
-                />
-              ))}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:bottom-12 sm:right-12 z-30 sm:pb-4">
+              <div className="flex items-center gap-2 sm:hidden" aria-hidden="true">
+                {heroSlides.map((_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-1 rounded-full transition-all duration-700",
+                      i === heroIndex
+                        ? "w-8 bg-emerald-400 shadow-[0_0_20px_var(--glow-full)]"
+                        : "w-2 bg-white/30",
+                    )}
+                  />
+                ))}
+              </div>
+
+              <div className="hidden items-center gap-3 sm:flex">
+                {heroSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Ir para o destaque ${i + 1}: ${sanitizeDisplayTitle(heroSlides[i]?.title || "Catálogo")}`}
+                    aria-current={i === heroIndex ? "true" : undefined}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-700",
+                      i === heroIndex
+                        ? "w-16 bg-emerald-400 shadow-[0_0_20px_var(--glow-full)]"
+                        : "w-3 bg-white/30 hover:bg-white/50",
+                    )}
+                    onClick={() => heroApi?.scrollTo(i)}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className="absolute inset-0 flex items-end z-20 pointer-events-none">
@@ -573,422 +637,47 @@ export function CatalogExplorer({
               className="space-y-24 pb-20"
             >
               {discoverRows.map((row, rowIndex) => (
-                <HighlightCarousel key={row.id} row={row} rowIndex={rowIndex} />
+                <DeferredHighlightCarousel
+                  key={row.id}
+                  row={row}
+                  rowIndex={rowIndex}
+                />
               ))}
             </motion.section>
           ) : (
-            <motion.section
-              key="browse-view"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-              className="space-y-12 px-4 xs:px-6 sm:px-12 lg:px-20 pb-20"
-            >
-              <div className="flex flex-col gap-10">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 border-b border-white/5 pb-8">
-                  <div className="space-y-5">
-                    <h2 className="text-5xl font-black sm:text-8xl headline-neo tracking-tighter uppercase italic leading-[0.85] flex flex-col">
-                      <span className="text-zinc-600 text-3xl sm:text-5xl">Explorar</span>
-                      <span className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">Toda Coleção</span>
-                    </h2>
-                    <div className="flex gap-10 pt-4">
-                      {(Object.keys(COLLECTION_ROUTE_BY_TAB) as CatalogType[]).map((type) => (
-                        <Link
-                          key={type}
-                          href={COLLECTION_ROUTE_BY_TAB[type]}
-                          scroll={false}
-                          className={cn(
-                            "text-xs font-black tracking-[0.4em] uppercase transition-all pb-4 border-b-2",
-                            tab === type
-                              ? "text-emerald-400 border-emerald-500"
-                              : "text-zinc-600 border-transparent hover:text-zinc-300",
-                          )}
-                        >
-                          {type === "movies" ? "FILMES" : "SÉRIES"}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
-                    <div className="relative flex-1 group">
-                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 size-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                      <Input
-                        className="h-16 w-full border-white/5 bg-white/[0.03] pl-14 pr-14 rounded-2xl text-base font-bold text-white placeholder:text-zinc-700 focus-visible:ring-1 focus-visible:ring-emerald-500/30 transition-all backdrop-blur-xl shadow-xl"
-                        placeholder="Pesquisar por título ou palavra-chave..."
-                        value={query}
-                        onChange={(e) => onQueryChange(e.target.value)}
-                      />
-                      {query && (
-                        <button
-                          onClick={() => onQueryChange("")}
-                          className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-white transition-colors p-1"
-                        >
-                          <XIcon className="size-5" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex gap-3 h-16">
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "h-full px-8 rounded-2xl border-white/10 bg-white/5 text-zinc-100 font-black text-[11px] tracking-widest uppercase hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all backdrop-blur-xl flex-1 lg:flex-none",
-                          activeAdvancedCount > 0 && "text-emerald-400 border-emerald-500/40 bg-emerald-500/5 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
-                        )}
-                        onClick={() => setIsAdvancedOpen(true)}
-                      >
-                        <SlidersHorizontal className="mr-3 size-5 text-emerald-500" />
-                        FILTRE
-                        {activeAdvancedCount > 0 && (
-                          <span className="ml-2 size-5 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-black">
-                            {activeAdvancedCount}
-                          </span>
-                        )}
-                      </Button>
-
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-16 rounded-2xl bg-white/5 border border-white/10 hover:bg-emerald-500/10 text-emerald-500 backdrop-blur-xl shadow-xl"
-                        onClick={() => setIsCommandOpen(true)}
-                      >
-                        <CommandIcon className="size-6" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row items-center gap-6 justify-between bg-zinc-950/40 p-5 rounded-2xl border border-white/5 backdrop-blur-sm shadow-inner">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-3 mr-4">
-                        <TrendingUp className={cn("size-4 text-emerald-500", isLoadingList && "animate-pulse")} />
-                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] whitespace-nowrap">
-                          {isLoadingList ? (
-                            <span className="text-emerald-500/80 animate-pulse">BUSCANDO NO CATÁLOGO...</span>
-                          ) : (
-                            <>{formatNumber(currentData?.total || 0)} {tab === "movies" ? "FILMES" : "SÉRIES"} DISPONÍVEIS</>
-                          )}
-                        </span>
-                      </div>
-
-                      {(selectedGroups.length > 0 || quality !== "all" || legendado !== "all") && (
-                        <>
-                          <div className="h-4 w-px bg-white/10 mx-2 hidden md:block" />
-                          <div className="flex flex-wrap gap-2">
-                            {selectedGroups.map(g => (
-                              <Badge key={g} variant="tech" className="bg-violet-500/5 text-violet-400 border-violet-500/10 py-1.5 px-4 rounded-xl normal-case font-bold text-[10px]">
-                                {sanitizeDisplayTitle(g)}
-                              </Badge>
-                            ))}
-                            {quality !== "all" && (
-                              <Badge variant="tech" className="bg-violet-500/5 text-violet-400 border-violet-500/10 py-1.5 px-4 rounded-xl font-bold text-[10px]">
-                                {quality}
-                              </Badge>
-                            )}
-                            {legendado !== "all" && (
-                              <Badge variant="tech" className="bg-blue-500/5 text-blue-400 border-blue-500/10 py-1.5 px-4 rounded-xl font-bold text-[10px]">
-                                {legendado === "yes" ? "Legendado" : "Dublado"}
-                              </Badge>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {activeAdvancedCount > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-[9px] font-black uppercase tracking-widest text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/5 rounded-lg"
-                        onClick={handleResetAdvancedFilters}
-                      >
-                        REMOVER TODOS OS FILTROS
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 sm:gap-8 min-h-screen">
-                  {isLoadingList
-                    ? Array.from({ length: 18 }).map((_, i) => (
-                      <div key={i} className="space-y-4">
-                        <Skeleton className="aspect-[2/3] rounded-[2rem] bg-white/5 border border-white/5" />
-                        <div className="space-y-2 px-2">
-                          <Skeleton className="h-3 w-16 bg-white/5" />
-                          <Skeleton className="h-5 w-full bg-white/5" />
-                        </div>
-                      </div>
-                    ))
-                    : visibleItems.map((item: CatalogItem, index: number) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: (index % 12) * 0.03, duration: 0.4 }}
-                      >
-                        <Link
-                          href={`/view/${tab}/${item.id}`}
-                          className="group relative block"
-                        >
-                          <div className="relative w-full aspect-[2/3] overflow-hidden rounded-[1.8rem] sm:rounded-[2.2rem] bg-zinc-950 border border-white/5 shadow-2xl transition-all duration-500 group-hover:scale-[1.04] group-hover:border-emerald-500/40 group-hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]">
-                            <SafeImage
-                              src={item.posterUrl || item.logoUrl || placeholderImage("poster")}
-                              fallbackSrc={placeholderImage("poster")}
-                              alt={item.title}
-                              fill
-                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 15vw"
-                              className="object-cover opacity-85 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-90 group-hover:opacity-70 transition-opacity" />
-
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 scale-75 group-hover:scale-100 pointer-events-none">
-                              <div className="size-16 rounded-full bg-emerald-500/90 text-white flex items-center justify-center shadow-[0_0_30px_var(--glow-full)]">
-                                <Play className="size-8 fill-current translate-x-1" />
-                              </div>
-                            </div>
-
-                            <div className="absolute top-4 right-4 flex flex-col gap-2 items-end z-20">
-                              <FavoriteButton
-                                type={tab === "movies" ? "movie" : "series"}
-                                contentId={item.id}
-                                className="size-10 bg-black/40 backdrop-blur-xl border-white/10 hover:bg-emerald-500 hover:text-white"
-                              />
-                              {"quality" in item && item.quality && (
-                                <Badge variant="neon" className="text-[8px] sm:text-[9px] px-2 py-0.5 uppercase font-black">
-                                  {item.quality}
-                                </Badge>
-                              )}
-                            </div>
-
-                            <div className="absolute inset-x-0 bottom-0 p-6 space-y-2 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                              <p className="text-[9px] font-black text-violet-400 uppercase tracking-[0.2em] line-clamp-1 opacity-90">
-                                {sanitizeDisplayTitle(item.groupTitle)}
-                              </p>
-                              <h3 className="line-clamp-2 text-base sm:text-lg font-black text-white leading-tight uppercase italic group-hover:text-emerald-300 transition-colors">
-                                {cleanTitleForSearch(item.title)}
-                              </h3>
-                              {"year" in item && item.year && (
-                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                                  {item.year}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      </motion.div>
-                    ))}
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-12 pt-24 border-t border-white/5">
-                  <div className="flex items-center gap-4">
-                    <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_10px_var(--glow-full)]" />
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.4em]">
-                      PÁGINA {currentData?.page} DE {currentData?.totalPages}
-                    </p>
-                  </div>
-
-                  {currentData && currentData.totalPages > 1 && (
-                    <div className="flex items-center gap-3 p-1.5 bg-black/40 rounded-2xl border border-white/5 backdrop-blur-xl">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-12 rounded-xl hover:bg-emerald-500/10 hover:text-emerald-500"
-                        disabled={page <= 1}
-                        onClick={() => onPageChange(page - 1)}
-                      >
-                        <ChevronLeft className="size-6" />
-                      </Button>
-
-                      <div className="flex gap-1.5 px-2">
-                        {buildPagination(page, currentData.totalPages).map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => onPageChange(p)}
-                            className={cn(
-                              "size-10 rounded-xl text-[10px] font-black transition-all",
-                              page === p
-                                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/40"
-                                : "text-zinc-500 hover:text-white hover:bg-white/5",
-                            )}
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-12 rounded-xl hover:bg-emerald-500/10 hover:text-emerald-500"
-                        disabled={page >= currentData.totalPages}
-                        onClick={() => onPageChange(page + 1)}
-                      >
-                        <ChevronRight className="size-6" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.section>
+            <BrowseView
+              activeAdvancedCount={activeAdvancedCount}
+              currentData={currentData}
+              groups={groups}
+              isAdvancedOpen={isAdvancedOpen}
+              isCommandOpen={isCommandOpen}
+              isLoadingList={isLoadingList}
+              legendado={legendado}
+              onPageChange={onPageChange}
+              onQueryChange={onQueryChange}
+              onSelectSingleGroup={(value) => {
+                onSelectSingleGroup(value);
+                catalogSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              onSortChange={onSortChange}
+              onTabChange={onTabChange}
+              onToggleGroupFilter={onToggleGroupFilter}
+              page={page}
+              quality={quality}
+              query={query}
+              resetAdvancedFilters={resetAdvancedFilters}
+              selectedGroups={selectedGroups}
+              setIsAdvancedOpen={setIsAdvancedOpen}
+              setIsCommandOpen={setIsCommandOpen}
+              setLegendado={setLegendado}
+              sort={sort}
+              sortOptions={sortOptions}
+              tab={tab}
+              visibleItems={visibleItems}
+            />
           )}
         </AnimatePresence>
       </div>
-
-      <Dialog open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="border-white/10 bg-[#070708]/98 backdrop-blur-[40px] text-zinc-100 sm:max-w-3xl max-h-[90vh] flex flex-col p-0 shadow-[0_0_100px_rgba(0,0,0,1)]"
-        >
-          <div className="absolute inset-0 pointer-events-none opacity-20">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_10%,var(--glow-40),transparent_50%)]" />
-          </div>
-
-          <DialogHeader className="p-8 sm:p-12 border-b border-white/5 relative z-10 flex flex-row items-center justify-between">
-            <div className="space-y-2">
-              <DialogTitle className="text-3xl sm:text-4xl font-black uppercase tracking-tighter italic flex items-center gap-5 text-white">
-                <SlidersHorizontal className="size-8 sm:size-10 text-emerald-500" />
-                FILTRE O CATÁLOGO
-              </DialogTitle>
-              <DialogDescription className="text-zinc-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">
-                Ajuste as configurações para encontrar o conteúdo perfeito.
-              </DialogDescription>
-            </div>
-
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="size-12 rounded-full hover:bg-white/5 text-zinc-500 hover:text-white transition-all">
-                <XIcon className="size-6" />
-                <span className="sr-only">Fechar</span>
-              </Button>
-            </DialogClose>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto p-8 sm:p-12 space-y-12 no-scrollbar relative z-10">
-            <div className="grid gap-10 sm:grid-cols-2">
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
-                  ORDEM DE EXIBIÇÃO
-                </p>
-                <Select value={sort} onValueChange={handleSortChange}>
-                  <SelectTrigger className="h-16 rounded-2xl border-white/5 bg-white/[0.03] font-black text-xs tracking-widest uppercase focus:ring-emerald-500/30">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#0f1115] border-white/10">
-                    {sortOptions.map((opt) => (
-                      <SelectItem
-                        key={opt.value}
-                        value={opt.value}
-                        className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600 focus:text-white"
-                      >
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
-                  TIPO DE ÁUDIO
-                </p>
-                <Select value={legendado} onValueChange={handleLegendadoChange}>
-                  <SelectTrigger className="h-16 rounded-2xl border-white/5 bg-white/[0.03] font-black text-xs tracking-widest uppercase focus:ring-emerald-500/30">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#0f1115] border-white/10">
-                    <SelectItem value="all" className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600">
-                      TODOS OS TÍTULOS
-                    </SelectItem>
-                    <SelectItem value="no" className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600">
-                      DUBLADO (PT-BR)
-                    </SelectItem>
-                    <SelectItem value="yes" className="h-14 font-black text-[10px] tracking-widest uppercase focus:bg-emerald-600">
-                      LEGENDADO / ORIGINAL
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
-                  CATEGORIAS DISPONÍVEIS
-                </p>
-                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                  {selectedGroups.length} DE {MAX_GROUP_FILTERS} SELECIONADOS
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3">
-                <button
-                  className={cn(
-                    "h-14 rounded-2xl text-[10px] font-black tracking-widest uppercase border transition-all flex items-center justify-center gap-3",
-                    selectedGroups.length === 0
-                      ? "bg-emerald-600 border-emerald-600 text-white shadow-lg"
-                      : "border-white/5 bg-white/[0.02] text-zinc-500 hover:border-white/20 hover:text-zinc-300",
-                  )}
-                  onClick={() => handleToggleGroupFilter("all")}
-                >
-                  {selectedGroups.length === 0 && <Check className="size-4" />}
-                  TODAS AS CATEGORIAS
-                </button>
-                {groups.slice(0, 24).map((g) => {
-                  const isSelected = selectedGroups.includes(g.name);
-                  return (
-                    <button
-                      key={g.name}
-                      className={cn(
-                        "h-14 px-5 rounded-2xl text-[10px] font-black tracking-widest uppercase border transition-all truncate text-left flex items-center justify-between group/cat",
-                        isSelected
-                          ? "bg-emerald-600 border-emerald-600 text-white shadow-lg"
-                          : "border-white/5 bg-white/[0.02] text-zinc-500 hover:border-white/20 hover:text-zinc-300",
-                        !isSelected &&
-                        selectedGroups.length >= MAX_GROUP_FILTERS &&
-                        "opacity-30 cursor-not-allowed",
-                      )}
-                      disabled={!isSelected && selectedGroups.length >= MAX_GROUP_FILTERS}
-                      onClick={() => handleToggleGroupFilter(g.name)}
-                    >
-                      <span className="truncate">{sanitizeDisplayTitle(g.name)}</span>
-                      {isSelected ? (
-                        <Check className="size-4 shrink-0" />
-                      ) : (
-                        <span className="text-zinc-800 group-hover/cat:text-zinc-600 text-[8px] font-bold">ADD</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-8 sm:p-12 bg-black/60 border-t border-white/5 flex gap-4 relative z-10">
-            <Button
-              variant="ghost"
-              className="flex-1 h-16 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-white/5"
-              onClick={handleResetAdvancedFilters}
-            >
-              RESETAR TUDO
-            </Button>
-            <Button
-              className="flex-[2] h-16 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-900 text-white font-black uppercase tracking-[0.2em] text-[10px] hover:from-emerald-500 hover:to-cyan-500 shadow-xl shadow-emerald-900/20 active:scale-[0.98] transition-all"
-              onClick={() => setIsAdvancedOpen(false)}
-            >
-              CONFIRMAR E FILTRAR
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <SearchCommand
-        open={isCommandOpen}
-        onOpenChange={setIsCommandOpen}
-        groups={groups as GroupCount[]}
-        onSelectGroup={handleSelectSingleGroup}
-        onSelectTab={onTabChange}
-      />
     </main>
   );
 }
