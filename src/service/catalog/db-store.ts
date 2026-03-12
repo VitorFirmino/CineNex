@@ -51,23 +51,38 @@ export async function getGroupCounts(type: CatalogType | "all"): Promise<GroupCo
 export async function searchMovies(
   query: ListQuery,
 ): Promise<PaginationResult<MovieItem>> {
-  return discoverMovies({
+  const result = await discoverMovies({
     page: query.page,
     pageSize: query.pageSize,
     genreId: query.group,
     query: query.q,
+    sort: query.sort,
   });
+
+  return {
+    ...result,
+    items: sortMovieItems(result.items, query.sort),
+  };
 }
 
 export async function searchSeries(
   query: ListQuery,
 ): Promise<PaginationResult<SeriesIndexItem>> {
-  return discoverSeries({
+  const result = await discoverSeries({
     page: query.page,
     pageSize: query.pageSize,
     genreId: query.group,
     query: query.q,
   });
+
+  const items = isEpisodeSort(query.sort)
+    ? await hydrateSeriesEpisodeCounts(result.items)
+    : result.items;
+
+  return {
+    ...result,
+    items: sortSeriesItems(items, query.sort),
+  };
 }
 
 type SeriesDetailsSummary = SeriesItem & {
@@ -239,4 +254,97 @@ function parseTmdbId(id: string, type: "movie" | "tv"): number | null {
     return Number.isFinite(num) && num > 0 ? num : null;
   }
   return null;
+}
+
+function compareText(a: string, b: string): number {
+  return a.localeCompare(b, "pt-BR", {
+    sensitivity: "base",
+    numeric: true,
+  });
+}
+
+function compareNullableNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  direction: "asc" | "desc",
+): number {
+  const left = typeof a === "number" && Number.isFinite(a) ? a : null;
+  const right = typeof b === "number" && Number.isFinite(b) ? b : null;
+
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+
+  return direction === "asc" ? left - right : right - left;
+}
+
+function stableSort<T>(items: T[], compare: (a: T, b: T) => number): T[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => compare(left.item, right.item) || left.index - right.index)
+    .map(({ item }) => item);
+}
+
+function isEpisodeSort(sort: ListQuery["sort"]): sort is "episodes_asc" | "episodes_desc" {
+  return sort === "episodes_asc" || sort === "episodes_desc";
+}
+
+async function hydrateSeriesEpisodeCounts(
+  items: SeriesIndexItem[],
+): Promise<SeriesIndexItem[]> {
+  return Promise.all(
+    items.map(async (item) => {
+      const tmdbId = parseTmdbId(item.id, "tv");
+      if (!tmdbId) return item;
+
+      const details = await getTmdbSeriesDetails(tmdbId);
+      if (!details) return item;
+
+      return {
+        ...item,
+        seasonCount: details.seasonCount,
+        episodeCount: details.episodeCount,
+      };
+    }),
+  );
+}
+
+type ItemCompare<T> = (a: T, b: T) => number;
+
+const movieSortComparers: Partial<Record<NonNullable<ListQuery["sort"]>, ItemCompare<MovieItem>>> = {
+  title_asc: (a, b) => compareText(a.title || a.displayTitle, b.title || b.displayTitle),
+  title_desc: (a, b) => compareText(b.title || b.displayTitle, a.title || a.displayTitle),
+  year_asc: (a, b) =>
+    compareNullableNumber(a.year, b.year, "asc") ||
+    compareText(a.title || a.displayTitle, b.title || b.displayTitle),
+  year_desc: (a, b) =>
+    compareNullableNumber(a.year, b.year, "desc") ||
+    compareText(a.title || a.displayTitle, b.title || b.displayTitle),
+};
+
+function sortMovieItems(
+  items: MovieItem[],
+  sort: ListQuery["sort"],
+): MovieItem[] {
+  const compare = sort ? movieSortComparers[sort] : undefined;
+  return compare ? stableSort(items, compare) : items;
+}
+
+const seriesSortComparers: Partial<Record<NonNullable<ListQuery["sort"]>, ItemCompare<SeriesIndexItem>>> = {
+  title_asc: (a, b) => compareText(a.title, b.title),
+  title_desc: (a, b) => compareText(b.title, a.title),
+  episodes_asc: (a, b) =>
+    compareNullableNumber(a.episodeCount, b.episodeCount, "asc") ||
+    compareText(a.title, b.title),
+  episodes_desc: (a, b) =>
+    compareNullableNumber(a.episodeCount, b.episodeCount, "desc") ||
+    compareText(a.title, b.title),
+};
+
+function sortSeriesItems(
+  items: SeriesIndexItem[],
+  sort: ListQuery["sort"],
+): SeriesIndexItem[] {
+  const compare = sort ? seriesSortComparers[sort] : undefined;
+  return compare ? stableSort(items, compare) : items;
 }

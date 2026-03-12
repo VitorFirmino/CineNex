@@ -100,4 +100,23 @@ describe("tmdb-discover pagination", () => {
     );
     expect(requestedPages.every((page) => page === "500")).toBe(true);
   });
+
+  it("should request TMDB with release-date sorting for oldest movies", async () => {
+    fetchMock.mockImplementation(async (input: URL | string) => {
+      const url = new URL(String(input));
+
+      expect(url.pathname).toBe("/3/discover/movie");
+      expect(url.searchParams.get("sort_by")).toBe("primary_release_date.asc");
+
+      return buildOkResponse({
+        total_results: 20,
+        total_pages: 1,
+        results: Array.from({ length: 20 }, (_, index) => buildMovieResult(index + 1)),
+      });
+    });
+
+    await discoverMovies({ page: 1, pageSize: 15, sort: "year_asc" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -53,13 +53,14 @@ describe("catalog/series route", () => {
     });
 
     const response = await GET(
-      new NextRequest("http://localhost:3000/api/catalog/series?group=Drama&minEpisodes=8"),
+      new NextRequest("http://localhost:3000/api/catalog/series?group=Drama&minEpisodes=8&sort=episodes_desc"),
     );
 
     expect(searchSeriesMock).toHaveBeenCalledWith({
       q: undefined,
       group: "Drama",
       minEpisodes: 8,
+      sort: "episodes_desc",
       page: 1,
       pageSize: 24,
     });
@@ -96,6 +97,7 @@ describe("catalog/series route", () => {
       q: undefined,
       group: undefined,
       minEpisodes: 1,
+      sort: undefined,
       page: 1,
       pageSize: 120,
     });

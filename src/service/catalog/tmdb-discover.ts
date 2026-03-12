@@ -1,4 +1,4 @@
-import type { GroupCount, MovieItem, SeriesIndexItem, SeriesItem } from "@shared/types/catalog-types";
+import type { GroupCount, ListQuery, MovieItem, SeriesIndexItem, SeriesItem } from "@shared/types/catalog-types";
 import { getDemoVideoUrl } from "@services/catalog/demo-videos";
 
 function getHeaders(): HeadersInit | null {
@@ -239,6 +239,7 @@ interface DiscoverMoviesParams {
   genreId?: string;
   query?: string;
   year?: number;
+  sort?: ListQuery["sort"];
 }
 
 interface DiscoverMoviesResult {
@@ -387,6 +388,12 @@ function primaryTvGenre(genreIds?: number[], genres?: TmdbGenre[]): string {
 type PageUrlBuilder = (tmdbPage: number) => URL;
 type ResolvedUrlConfig = { buildPageUrl: PageUrlBuilder; revalidate: number };
 
+function resolveMovieDiscoverSort(sort?: ListQuery["sort"]): string {
+  if (sort === "year_asc") return "primary_release_date.asc";
+  if (sort === "year_desc") return "primary_release_date.desc";
+  return "popularity.desc";
+}
+
 function resolveMoviePageUrl(params: DiscoverMoviesParams): ResolvedUrlConfig {
   if (params.query) {
     return {
@@ -433,7 +440,7 @@ function resolveMoviePageUrl(params: DiscoverMoviesParams): ResolvedUrlConfig {
       buildPageUrl: (tmdbPage) => {
         const url = new URL("https://api.themoviedb.org/3/discover/movie");
         url.searchParams.set("language", "pt-BR");
-        url.searchParams.set("sort_by", "popularity.desc");
+        url.searchParams.set("sort_by", resolveMovieDiscoverSort(params.sort));
         url.searchParams.set("page", String(tmdbPage));
         url.searchParams.set("include_adult", "false");
         if (filter.kind === "genres") url.searchParams.set("with_genres", filter.withGenres);
@@ -448,7 +455,7 @@ function resolveMoviePageUrl(params: DiscoverMoviesParams): ResolvedUrlConfig {
     buildPageUrl: (tmdbPage) => {
       const url = new URL("https://api.themoviedb.org/3/discover/movie");
       url.searchParams.set("language", "pt-BR");
-      url.searchParams.set("sort_by", "popularity.desc");
+      url.searchParams.set("sort_by", resolveMovieDiscoverSort(params.sort));
       url.searchParams.set("page", String(tmdbPage));
       url.searchParams.set("include_adult", "false");
       if (params.year) url.searchParams.set("primary_release_year", String(params.year));
@@ -760,4 +767,3 @@ export async function getTmdbVideoKey(
 
   return trailer.key;
 }
-

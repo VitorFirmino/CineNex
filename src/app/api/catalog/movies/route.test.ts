@@ -61,12 +61,13 @@ describe("catalog/movies route", () => {
     });
 
     const response = await GET(
-      new NextRequest("http://localhost:3000/api/catalog/movies?page=2&pageSize=15&q=harry&group=Aventura"),
+      new NextRequest("http://localhost:3000/api/catalog/movies?page=2&pageSize=15&q=harry&group=Aventura&sort=year_desc"),
     );
 
     expect(searchMoviesMock).toHaveBeenCalledWith({
       q: "harry",
       group: "Aventura",
+      sort: "year_desc",
       page: 2,
       pageSize: 15,
     });
@@ -117,6 +118,7 @@ describe("catalog/movies route", () => {
     expect(searchMoviesMock).toHaveBeenCalledWith({
       q: undefined,
       group: undefined,
+      sort: undefined,
       page: 1,
       pageSize: 120,
     });
