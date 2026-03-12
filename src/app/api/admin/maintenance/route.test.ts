@@ -69,7 +69,7 @@ describe("admin/maintenance route", () => {
     findUniqueMock.mockResolvedValue({
       role: "ADMIN",
     });
-    getMaintenanceStateMock.mockReturnValue(true);
+    getMaintenanceStateMock.mockResolvedValue(true);
 
     const response = await GET();
 
@@ -115,6 +115,7 @@ describe("admin/maintenance route", () => {
     findUniqueMock.mockResolvedValue({
       role: "ADMIN",
     });
+    setMaintenanceStateMock.mockResolvedValue(true);
 
     const response = await POST(
       new Request("http://localhost:3000/api/admin/maintenance", {
@@ -125,11 +126,60 @@ describe("admin/maintenance route", () => {
       }),
     );
 
-    expect(setMaintenanceStateMock).toHaveBeenCalledWith(true);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       maintenance: true,
       success: true,
+    });
+    expect(setMaintenanceStateMock).toHaveBeenCalledWith(true);
+  });
+
+  it("should return 500 when reading the maintenance flag fails", async () => {
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "admin-1",
+        },
+      },
+    });
+    findUniqueMock.mockResolvedValue({
+      role: "ADMIN",
+    });
+    getMaintenanceStateMock.mockRejectedValue(new Error("db down"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Falha ao carregar estado da manutenção",
+    });
+  });
+
+  it("should return 500 when persisting the maintenance flag fails", async () => {
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "admin-1",
+        },
+      },
+    });
+    findUniqueMock.mockResolvedValue({
+      role: "ADMIN",
+    });
+    setMaintenanceStateMock.mockRejectedValue(new Error("db down"));
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/admin/maintenance", {
+        method: "POST",
+        body: JSON.stringify({
+          enabled: true,
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Falha ao persistir modo de manutenção",
     });
   });
 });
