@@ -50,3 +50,9 @@ model WatchProgress {
 
   @@unique([profileId, contentType, contentId, episodeId])
 }
+
+model MaintenanceState {
+  id        String   @id
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @default(now())
+}
