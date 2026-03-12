@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { prisma } from "@infrastructure/database/prisma";
@@ -26,7 +27,10 @@ function getAdminClient() {
 
 async function assertAdmin() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "admin/users",
+  });
   if (!user) return null;
   const profile = await prisma.profile.findUnique({
     where: { id: user.id },
