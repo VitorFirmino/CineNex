@@ -442,6 +442,7 @@ describe("use-catalog-explorer helpers", () => {
   it("should auto-advance the hero carousel and reset out-of-range indexes", async () => {
     vi.useFakeTimers();
     useCatalogStore.setState({ heroIndex: 8 });
+    pathnameState.value = "/";
 
     const scrollNextMock = vi.fn();
     const scrollToMock = vi.fn();
@@ -523,6 +524,8 @@ describe("use-catalog-explorer helpers", () => {
   });
 
   it("should keep series requests scoped to series filters only", async () => {
+    pathnameState.value = "/collection/series";
+
     const { result } = renderHook(() =>
       useCatalogExplorer({
         highlights: HIGHLIGHTS,
@@ -574,7 +577,7 @@ describe("use-catalog-explorer helpers", () => {
   it("should clear stale groups when reloading the categories fails", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    const { result } = renderHook(() =>
+    const { result, rerender } = renderHook(() =>
       useCatalogExplorer({
         highlights: HIGHLIGHTS,
       }),
@@ -588,7 +591,10 @@ describe("use-catalog-explorer helpers", () => {
 
     act(() => {
       result.current.onTabChange("series");
+      pathnameState.value = "/collection/series";
     });
+
+    rerender();
 
     await waitFor(() => {
       expect(result.current.groups).toEqual([]);
