@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 import { prisma } from "@infrastructure/database/prisma";
 
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/me",
+  });
 
   if (!user) {
     return NextResponse.json(
