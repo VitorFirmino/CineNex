@@ -22,7 +22,11 @@ export function SiteFooter() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-12 lg:gap-8">
 
           <div className="space-y-5">
-            <Link href="/" className="inline-flex items-center gap-2.5 group">
+            <Link
+              href="/"
+              aria-label="Ir para a página inicial do CineNex"
+              className="inline-flex items-center gap-2.5 group"
+            >
               <div className="size-9 rounded-lg bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center group-hover:shadow-[0_0_16px_var(--glow-30)] transition-all">
                 <Clapperboard className="size-4 text-emerald-400" />
               </div>
@@ -30,7 +34,7 @@ export function SiteFooter() {
                 <span className="text-white">CINE</span><span className="text-emerald-400">NEX</span>
               </span>
             </Link>
-            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs">
+            <p className="max-w-xs text-sm leading-relaxed text-zinc-400">
               Sua central de streaming com visual cinematográfico. Filmes, séries e o melhor conteúdo sempre disponível.
             </p>
             <div className="flex items-center gap-2.5">
@@ -41,7 +45,7 @@ export function SiteFooter() {
           </div>
 
           <div className="space-y-5">
-            <h4 className="text-[10px] font-black text-emerald-500/70 uppercase tracking-[0.4em]">Catálogo</h4>
+            <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.4em]">Catálogo</h4>
             <ul className="space-y-3">
               <li>
                 <Link href="/" className="flex items-center gap-3 text-zinc-400 hover:text-white transition-colors group">
@@ -65,7 +69,7 @@ export function SiteFooter() {
           </div>
 
           <div className="space-y-5">
-            <h4 className="text-[10px] font-black text-emerald-500/70 uppercase tracking-[0.4em]">Legal</h4>
+            <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.4em]">Legal</h4>
             <ul className="space-y-3">
               <li>
                 <Link href="/terms" className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors">
@@ -87,10 +91,10 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-[11px] font-bold text-zinc-600 uppercase tracking-[0.3em]">
+          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.3em]">
             © {year} CineNex — Todos os direitos reservados
           </p>
-          <p className="text-[11px] font-bold text-zinc-700 uppercase tracking-[0.2em]">
+          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em]">
             Feito com ❤️ para cinéfilos
           </p>
         </div>
