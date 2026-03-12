@@ -12,6 +12,23 @@ async function openCatalogDiagnosticsDialog(page: Page) {
   await openReportButton.dispatchEvent("click");
 }
 
+async function ensurePrimaryNavigationVisible(page: Page) {
+  const moviesLink = page.getByRole("link", { name: /Filmes/i }).first();
+  const seriesLink = page.getByRole("link", { name: /Séries/i }).first();
+
+  if ((await moviesLink.isVisible()) && (await seriesLink.isVisible())) {
+    return;
+  }
+
+  const openMenuButton = page.getByRole("button", {
+    name: /Abrir menu de navegação/i,
+  });
+  await expect(openMenuButton).toBeVisible();
+  await openMenuButton.click();
+  await expect(moviesLink).toBeVisible();
+  await expect(seriesLink).toBeVisible();
+}
+
 test.describe("accessibility smoke", () => {
   test("should expose the core landmarks and accessible auth controls", async ({
     page,
@@ -19,8 +36,7 @@ test.describe("accessibility smoke", () => {
     await page.goto("/");
 
     await expect(page.getByRole("main").first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Filmes/i }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: /Séries/i }).first()).toBeVisible();
+    await ensurePrimaryNavigationVisible(page);
 
     await page.goto("/login");
 
