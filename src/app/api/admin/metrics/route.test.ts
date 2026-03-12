@@ -182,4 +182,22 @@ describe("admin/metrics route", () => {
     );
     expect(typeof payload.timestamp).toBe("string");
   });
+
+  it("should return 500 when the profile lookup fails before the aggregations", async () => {
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "admin-1",
+        },
+      },
+    });
+    findUniqueMock.mockRejectedValue(new Error("profile down"));
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Erro ao buscar métricas",
+    });
+  });
 });
