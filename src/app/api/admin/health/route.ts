@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@infrastructure/database/prisma';
+import { getSafeAuthUser } from '@infrastructure/supabase/auth';
 import { createClient } from '@infrastructure/supabase/server';
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: 'admin/health',
+  });
 
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
 
