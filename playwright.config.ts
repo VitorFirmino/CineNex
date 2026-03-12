@@ -1,8 +1,8 @@
 import { config as loadEnv } from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
 
-loadEnv({ path: ".env.local", override: false });
-loadEnv({ path: ".env", override: false });
+loadEnv({ path: ".env.local", override: false, quiet: true });
+loadEnv({ path: ".env", override: false, quiet: true });
 
 const baseURL = process.env.BASE_URL ?? "http://127.0.0.1:3000";
 const shouldStartWebServer = !process.env.BASE_URL;
