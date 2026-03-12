@@ -3,6 +3,7 @@ import { LayoutClientShell } from "@components/layout-client-shell";
 import { MaintenanceScreen } from "@components/screens/maintenance-screen";
 import { getMaintenanceState } from "@lib/maintenance";
 import { createClient } from "@infrastructure/supabase/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { prisma } from "@infrastructure/database/prisma";
 import type { AuthUser } from "@infrastructure/api/auth-api";
 import { Analytics } from "@vercel/analytics/next";
@@ -36,7 +37,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    logContext: "layout",
+  });
 
   let isAdmin = false;
   if (user) {
@@ -64,7 +67,12 @@ export default async function RootLayout({
       }
     : null;
 
-  const isMaintenance = getMaintenanceState();
+  let isMaintenance = false;
+  try {
+    isMaintenance = await getMaintenanceState();
+  } catch (error) {
+    console.error("[layout] Falha ao carregar estado de manutencao.", error);
+  }
 
   if (isMaintenance && !isAdmin) {
     return (
