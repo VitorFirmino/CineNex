@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getSafeAuthUser } from '@infrastructure/supabase/auth';
 import { createClient } from '@infrastructure/supabase/server';
 import { prisma } from '@infrastructure/database/prisma';
 import { SidebarProvider, SidebarInset } from '@components/ui/sidebar';
@@ -6,7 +7,9 @@ import { AdminSidebar } from '@components/admin/admin-sidebar';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    logContext: 'admin/layout',
+  });
 
   if (!user) {
     redirect('/login?next=/admin');
