@@ -16,23 +16,25 @@ type TopFavoriteGroup = {
 };
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const profile = await prisma.profile.findUnique({
-    where: { id: user.id },
-    select: { role: true },
-  });
-
-  if (profile?.role !== "ADMIN") {
-    return NextResponse.json({ error: "Permissão negada" }, { status: 403 });
-  }
-
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+
+    if (profile?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Permissão negada" }, { status: 403 });
+    }
+
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
