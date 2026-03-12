@@ -6,6 +6,7 @@ import {
 } from "@services/auth/watch-progress-store";
 import { ensureProfileForUser } from "@services/auth/profile-sync";
 import { NextResponse } from "next/server";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 
 function isAbortedBodyReadError(error: unknown): boolean {
@@ -49,9 +50,10 @@ function normalizeNumber(value: unknown): number | null {
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/watch-progress",
+  });
 
   if (!user) {
     return NextResponse.json(
@@ -89,9 +91,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/watch-progress",
+  });
 
   if (!user) {
     return NextResponse.json(
