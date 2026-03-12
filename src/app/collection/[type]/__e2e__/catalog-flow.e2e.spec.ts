@@ -104,4 +104,22 @@ test.describe("catalog flow", () => {
     expect(moviesHits).toBeLessThanOrEqual(2);
     expect(groupsMoviesHits).toBeLessThanOrEqual(2);
   });
+
+  test("should not get stuck loading when the current last page is clicked twice", async ({
+    page,
+  }) => {
+    const paginationButtons = page.locator("button[aria-current='page'], div.flex.gap-1\\.5.px-2 > button");
+    const lastPageButton = paginationButtons.last();
+    const lastPageLabel = (await lastPageButton.textContent())?.trim();
+
+    expect(lastPageLabel).toBeTruthy();
+
+    await lastPageButton.dblclick();
+    await expect(page.getByText(new RegExp(`PÁGINA ${lastPageLabel} DE ${lastPageLabel}`, "i"))).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await expect(page.getByText("BUSCANDO NO CATÁLOGO...")).toHaveCount(0);
+    await waitForCatalogGrid(page, "movies");
+  });
 });

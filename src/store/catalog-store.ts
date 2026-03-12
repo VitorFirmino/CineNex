@@ -217,7 +217,8 @@ export const useCatalogStore = create<CatalogStore>()((set, get) => ({
   resetPageAndLoading: () => set({ page: 1, isLoadingList: true }),
 
   changePage: (next) => {
-    if (get().isChangingPage) return;
+    const { isChangingPage, page } = get();
+    if (isChangingPage || !Number.isFinite(next) || next < 1 || next === page) return;
     set({ isChangingPage: true, page: next, isLoadingList: true });
   },
 }));

@@ -297,12 +297,16 @@ export function BrowseView({
                   {buildPagination(page, currentData.totalPages).map((paginationPage) => (
                     <button
                       key={paginationPage}
+                      type="button"
+                      disabled={page === paginationPage}
+                      aria-current={page === paginationPage ? "page" : undefined}
                       onClick={() => onPageChange(paginationPage)}
                       className={cn(
                         "size-10 rounded-xl text-[10px] font-black transition-all",
                         page === paginationPage
                           ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/40"
                           : "text-zinc-500 hover:text-white hover:bg-white/5",
+                        page === paginationPage && "cursor-default",
                       )}
                     >
                       {paginationPage}

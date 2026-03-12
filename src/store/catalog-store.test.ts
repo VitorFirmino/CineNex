@@ -179,6 +179,22 @@ describe("catalog-store", () => {
     });
   });
 
+  it("should ignore page changes that target the current page", () => {
+    useCatalogStore.setState({
+      page: 5,
+      isChangingPage: false,
+      isLoadingList: false,
+    });
+
+    useCatalogStore.getState().changePage(5);
+
+    expect(useCatalogStore.getState()).toMatchObject({
+      page: 5,
+      isChangingPage: false,
+      isLoadingList: false,
+    });
+  });
+
   it("should select a single group and reset the pagination state", () => {
     useCatalogStore.setState({
       selectedGroups: ["Drama"],
