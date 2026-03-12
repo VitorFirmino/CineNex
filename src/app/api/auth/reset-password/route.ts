@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 
 const resetSchema = z
@@ -30,9 +31,10 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: "auth/reset-password",
+  });
   if (!user) {
     return NextResponse.json(
       { error: "Auth session missing" },
