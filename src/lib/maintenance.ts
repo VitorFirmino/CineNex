@@ -1,28 +1,56 @@
-import fs from 'fs';
-import path from 'path';
+import { prisma } from '@infrastructure/database/prisma';
 
-const MAINTENANCE_FILE = path.join(process.cwd(), 'data', 'system', 'maintenance.json');
+const MAINTENANCE_ROW_ID = 'global';
+const CREATE_MAINTENANCE_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS "MaintenanceState" (
+    "id" TEXT NOT NULL,
+    "enabled" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "MaintenanceState_pkey" PRIMARY KEY ("id")
+  )
+`;
 
-export function getMaintenanceState(): boolean {
-  try {
-    if (!fs.existsSync(MAINTENANCE_FILE)) return false;
-    const data = fs.readFileSync(MAINTENANCE_FILE, 'utf-8');
-    const parsed = JSON.parse(data);
-    return !!parsed.enabled;
-  } catch (error) {
-    console.error('Error reading maintenance state:', error);
-    return false;
+let ensureTablePromise: Promise<void> | null = null;
+
+async function ensureMaintenanceTable() {
+  if (!ensureTablePromise) {
+    ensureTablePromise = prisma.$executeRawUnsafe(CREATE_MAINTENANCE_TABLE_SQL)
+      .then(() => undefined)
+      .catch((error) => {
+        ensureTablePromise = null;
+        throw error;
+      });
   }
+
+  return ensureTablePromise;
 }
 
-export function setMaintenanceState(enabled: boolean) {
-  try {
-    const dir = path.dirname(MAINTENANCE_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(MAINTENANCE_FILE, JSON.stringify({ enabled, updatedAt: new Date().toISOString() }));
-  } catch (error) {
-    console.error('Error setting maintenance state:', error);
-  }
+export async function getMaintenanceState(): Promise<boolean> {
+  await ensureMaintenanceTable();
+
+  const rows = await prisma.$queryRaw<Array<{ enabled: boolean }>>`
+    SELECT "enabled"
+    FROM "MaintenanceState"
+    WHERE "id" = ${MAINTENANCE_ROW_ID}
+    LIMIT 1
+  `;
+
+  return rows[0]?.enabled ?? false;
+}
+
+export async function setMaintenanceState(enabled: boolean): Promise<boolean> {
+  await ensureMaintenanceTable();
+
+  const updatedAt = new Date();
+  const rows = await prisma.$queryRaw<Array<{ enabled: boolean }>>`
+    INSERT INTO "MaintenanceState" ("id", "enabled", "updatedAt")
+    VALUES (${MAINTENANCE_ROW_ID}, ${enabled}, ${updatedAt})
+    ON CONFLICT ("id")
+    DO UPDATE SET
+      "enabled" = EXCLUDED."enabled",
+      "updatedAt" = EXCLUDED."updatedAt"
+    RETURNING "enabled"
+  `;
+
+  return rows[0]?.enabled ?? false;
 }
