@@ -68,8 +68,13 @@ test.describe("mobile real flow", () => {
     test.skip(testInfo.project.name !== "mobile-chrome");
 
     await loginWithCredentials(page, e2eUserCredentials!, "/collection/favorites");
+    await expectAuthenticatedSession(page);
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/collection\/favorites$/, { timeout: 30_000 });
     await expect(page.getByRole("heading", { name: /Favoritos/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText("Minha Coleção Privada")).toBeVisible({
       timeout: 30_000,
     });
 
