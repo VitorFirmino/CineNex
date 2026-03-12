@@ -7,6 +7,7 @@ import {
   resolveSeriesEpisodeStreamUrl,
 } from "@services/catalog/db-store";
 import { getWatchProgressForContent } from "@services/auth/watch-progress-store";
+import { getSafeAuthUser } from "@infrastructure/supabase/auth";
 import { createClient } from "@infrastructure/supabase/server";
 import { notFound } from "next/navigation";
 import { PlayerInterface } from "./player-interface";
@@ -100,9 +101,9 @@ async function loadResumeProgress(
   if (!isProgressType(type)) return null;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    logContext: "play/page",
+  });
 
   if (!user) return null;
 
