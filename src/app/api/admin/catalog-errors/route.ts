@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@infrastructure/database/prisma';
+import { getSafeAuthUser } from '@infrastructure/supabase/auth';
 import { createClient } from '@infrastructure/supabase/server';
 import {
   getSeriesDetailsSummary,
@@ -40,9 +41,10 @@ function buildSourceUnavailableError(
 
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSafeAuthUser(supabase, {
+    clearInvalidSession: true,
+    logContext: 'admin/catalog-errors',
+  });
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
 
   const profile = await prisma.profile.findUnique({
