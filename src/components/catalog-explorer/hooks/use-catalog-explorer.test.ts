@@ -305,10 +305,19 @@ describe("use-catalog-explorer helpers", () => {
       expect(result.current.groups).toEqual([{ name: "Ação", count: 10 }]);
     });
 
-    expect(listWatchProgressMock).toHaveBeenCalledWith(18);
-    expect(getCatalogGroupsMock).toHaveBeenCalledWith("movies", {
-      cacheTtlMs: 600000,
-    });
+    expect(listWatchProgressMock).toHaveBeenCalledWith(
+      18,
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(getCatalogGroupsMock).toHaveBeenCalledWith(
+      "movies",
+      expect.objectContaining({
+        cacheTtlMs: 600000,
+        signal: expect.any(AbortSignal),
+      }),
+    );
     expect(listCatalogMock).toHaveBeenCalled();
     expect(result.current.discoverRows[0]?.id).toBe("recently-watched");
     expect(result.current.currentData?.items).toHaveLength(2);
