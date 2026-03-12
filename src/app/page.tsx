@@ -1,6 +1,16 @@
+import ReactDOM from "react-dom";
 import type { Metadata } from "next";
-import { CatalogExplorer } from "@components/catalog-explorer";
+import dynamic from "next/dynamic";
+import { getImageProps } from "next/image";
+import { HomeCatalogExplorerSkeleton } from "@components/home-catalog-explorer/components/home-catalog-explorer-skeleton";
 import { getHomeHighlights } from "@services/catalog/highlights-service";
+
+const HomeCatalogExplorer = dynamic(
+  () => import("@components/home-catalog-explorer").then((m) => m.HomeCatalogExplorer),
+  {
+    loading: () => <HomeCatalogExplorerSkeleton />,
+  },
+);
 
 export const metadata: Metadata = {
   title: "CineNex | Filmes e Séries para Assistir Online",
@@ -24,15 +34,31 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const highlights = await getHomeHighlights();
+  const heroImageUrl =
+    highlights.hero?.imageUrl ?? highlights.rows[0]?.items[0]?.imageUrl ?? null;
+
+  if (heroImageUrl) {
+    const { props } = getImageProps({
+      src: heroImageUrl,
+      alt: highlights.hero?.title ?? "Destaque do CineNex",
+      width: 1280,
+      height: 720,
+      sizes: "100vw",
+      quality: 75,
+    });
+
+    ReactDOM.preload(props.src, {
+      as: "image",
+      imageSrcSet: props.srcSet,
+      imageSizes: props.sizes,
+      fetchPriority: "high",
+    });
+  }
+
   return (
     <main className="relative min-h-screen">
       <div className="bg-main-gradient" />
-      <CatalogExplorer
-        key="discover-home"
-        highlights={highlights}
-        initialTab="movies"
-        initialViewMode="discover"
-      />
+      <HomeCatalogExplorer highlights={highlights} />
     </main>
   );
 }
