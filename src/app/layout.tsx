@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { TooltipProvider } from "@components/ui/tooltip";
-import { SiteHeader } from "@components/site-header";
-import { SiteFooterWrapper } from "@components/site-footer/wrapper";
+import { LayoutClientShell } from "@components/layout-client-shell";
 import { MaintenanceScreen } from "@components/screens/maintenance-screen";
 import { getMaintenanceState } from "@lib/maintenance";
 import { createClient } from "@infrastructure/supabase/server";
 import { prisma } from "@infrastructure/database/prisma";
-import { MonitoringProvider } from "@components/monitoring-provider";
-import { AuthHashRecoveryGuard } from "@features/auth/components/auth-hash-recovery-guard";
-import { Analytics } from "@vercel/analytics/next";
 import type { AuthUser } from "@infrastructure/api/auth-api";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "plyr/dist/plyr.css";
 
@@ -30,6 +26,9 @@ export const metadata: Metadata = {
   title: "CineNex | Sua Central Multimídia",
   description: "Explore um vasto catálogo de filmes e séries com uma interface cinematográfica e de alta performance.",
 };
+
+const shouldEnableVercelAnalytics =
+  process.env.VERCEL === "1" || process.env.NEXT_PUBLIC_VERCEL_ENV !== undefined;
 
 export default async function RootLayout({
   children,
@@ -80,15 +79,10 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR" className="dark" data-scroll-behavior="smooth">
       <body className="font-sans antialiased text-zinc-100 min-h-screen bg-black" suppressHydrationWarning>
-        <TooltipProvider>
-          <MonitoringProvider>
-            <AuthHashRecoveryGuard />
-            <SiteHeader initialUser={initialAuthUser} />
-            {children}
-            <SiteFooterWrapper />
-          </MonitoringProvider>
-        </TooltipProvider>
-        <Analytics />
+        <LayoutClientShell initialUser={initialAuthUser}>
+          {children}
+        </LayoutClientShell>
+        {shouldEnableVercelAnalytics ? <Analytics /> : null}
       </body>
     </html>
   );
