@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSyncExternalStore } from 'react';
 import {
   User as UserIcon,
   LogIn,
@@ -32,6 +31,7 @@ import {
   SheetDescription,
 } from "@components/ui/sheet";
 import { usePathname } from 'next/navigation';
+import { useSyncExternalStore } from 'react';
 import { cn } from '@shared/utils';
 import { useSiteHeader } from './hooks/use-site-header';
 import type { AuthUser } from '@infrastructure/api/auth-api';
@@ -185,7 +185,11 @@ export function SiteHeader({ initialUser = null }: SiteHeaderProps) {
       <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
 
       <div className="container mx-auto flex h-14 items-center justify-between px-4 xs:px-6">
-        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+        <Link
+          href="/"
+          aria-label="Ir para a página inicial do CineNex"
+          className="flex items-center gap-2.5 group shrink-0"
+        >
           <div className="size-8 rounded-lg bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center transition-all group-hover:bg-emerald-600/30 group-hover:border-emerald-500/50 group-hover:shadow-[0_0_16px_var(--glow-30)]">
             <Clapperboard className="size-4 text-emerald-400" />
           </div>
